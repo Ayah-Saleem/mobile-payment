@@ -3,11 +3,11 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mobile Payment - Vending Machine</title>
-  <script src="/_sdk/element_sdk.js"></script>
+  <title>Vending Machine Display</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+    import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
 
     // 🔥 إعدادات Firebase
     const firebaseConfig = {
@@ -24,652 +24,583 @@
     const app = initializeApp(firebaseConfig);
     const database = getDatabase(app);
     
-    window.mobileDatabase = database;
-    window.mobileRef = ref;
-    window.mobileSet = set;
-    window.mobileOnValue = onValue;
+    window.machineDatabase = database;
+    window.machineRef = ref;
+    window.machineOnValue = onValue;
   </script>
   <style>
     body {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Cairo', 'Arial', sans-serif;
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1a3e 50%, #0a0e27 100%);
       width: 100%;
-      min-height: 100%;
-      overflow-x: hidden;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      background: 
+        radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.1) 0%, transparent 50%);
+      animation: float 20s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      50% { transform: translate(-50px, -50px) rotate(180deg); }
     }
 
     * {
       box-sizing: border-box;
     }
 
-    .mobile-container {
-      width: 100%;
-      min-height: 100%;
-      background: white;
-      padding: 20px;
+    .machine-screen {
+      width: 90%;
+      max-width: 700px;
+      background: linear-gradient(135deg, #1e1e3f 0%, #2d2d5f 100%);
+      border-radius: 30px;
+      padding: 30px;
+      box-shadow: 
+        0 30px 60px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(255, 255, 255, 0.1),
+        inset 0 0 30px rgba(99, 102, 241, 0.1);
+      border: 6px solid #6366f1;
+      position: relative;
+      z-index: 1;
+    }
+
+    .machine-header {
+      text-align: center;
+      margin-bottom: 25px;
+      padding-bottom: 20px;
+      border-bottom: 3px solid rgba(99, 102, 241, 0.3);
       position: relative;
     }
 
-    .mobile-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 25px 20px;
-      border-radius: 20px;
-      margin-bottom: 25px;
-      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-      text-align: center;
-    }
-
-    .mobile-title {
-      font-size: 24px;
+    .machine-title {
+      font-size: 36px;
       font-weight: 900;
-      margin: 0 0 8px 0;
-      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin: 0 0 10px 0;
+      text-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+      letter-spacing: 1px;
     }
 
-    .machine-id {
+    .machine-info {
       font-size: 14px;
-      opacity: 0.9;
+      color: #a5b4fc;
+      margin: 5px 0;
+      font-weight: 500;
+    }
+
+    .display-area {
+      background: linear-gradient(135deg, #000000 0%, #1a1a2e 100%);
+      border-radius: 20px;
+      padding: 25px 20px;
+      min-height: 350px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 4px solid #2d2d5f;
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 0 50px rgba(99, 102, 241, 0.2);
+    }
+
+    .display-area::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 70%),
+        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(99, 102, 241, 0.03) 2px, rgba(99, 102, 241, 0.03) 4px);
+      pointer-events: none;
+      animation: scanline 8s linear infinite;
+    }
+
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100%); }
+    }
+
+    .state-badge {
+      padding: 10px 25px;
+      border-radius: 30px;
+      font-size: 15px;
+      font-weight: 900;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 30px rgba(99, 102, 241, 0.5);
+      animation: glow 2s ease-in-out infinite;
+      position: relative;
+      z-index: 1;
+      transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .state-badge.idle {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: white;
+      box-shadow: 
+        0 15px 40px rgba(99, 102, 241, 0.6),
+        0 0 60px rgba(99, 102, 241, 0.4);
+    }
+
+    .state-badge.waiting {
+      background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+      color: white;
+      box-shadow: 
+        0 15px 40px rgba(245, 158, 11, 0.6),
+        0 0 60px rgba(245, 158, 11, 0.4);
+    }
+
+    .state-badge.payment {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      box-shadow: 
+        0 15px 40px rgba(59, 130, 246, 0.6),
+        0 0 60px rgba(59, 130, 246, 0.4);
+    }
+
+    .state-badge.dispensing {
+      background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+      color: white;
+      box-shadow: 
+        0 15px 40px rgba(139, 92, 246, 0.6),
+        0 0 60px rgba(139, 92, 246, 0.4);
+      animation: glow 1s ease-in-out infinite, shake 0.5s ease-in-out infinite;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    .state-badge.change {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      box-shadow: 
+        0 15px 40px rgba(16, 185, 129, 0.6),
+        0 0 60px rgba(16, 185, 129, 0.4);
+    }
+
+    .state-badge.complete {
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      color: white;
+      box-shadow: 
+        0 15px 40px rgba(34, 197, 94, 0.6),
+        0 0 60px rgba(34, 197, 94, 0.4);
+      animation: glow 0.8s ease-in-out infinite, bounce 1s ease-in-out infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @keyframes glow {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.3); }
+    }
+
+    .qr-display {
+      text-align: center;
+      animation: fadeInUp 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      position: relative;
+      z-index: 1;
+    }
+
+    @keyframes fadeInUp {
+      from { 
+        opacity: 0;
+        transform: translateY(40px); 
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0); 
+      }
+    }
+
+    .qr-title {
+      font-size: 22px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 15px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .qr-code-container {
+      width: 200px;
+      height: 200px;
+      background: white;
+      border-radius: 15px;
+      padding: 15px;
+      margin: 0 auto 20px;
+      box-shadow: 
+        0 15px 30px rgba(99, 102, 241, 0.4),
+        0 0 0 5px rgba(99, 102, 241, 0.2);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .qr-code-container::before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
+      background: linear-gradient(45deg, #6366f1, #ec4899, #6366f1);
+      border-radius: 35px;
+      z-index: -1;
+      opacity: 0;
+      animation: rotateBorder 3s linear infinite;
+    }
+
+    @keyframes rotateBorder {
+      0%, 100% { opacity: 0; transform: rotate(0deg); }
+      50% { opacity: 0.5; transform: rotate(180deg); }
+    }
+
+    #qrcode {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #qrcode img {
+      display: block;
+      margin: 0 auto;
+      border-radius: 15px;
+    }
+
+    .qr-instruction {
+      font-size: 16px;
+      color: #ffffff;
+      margin-bottom: 6px;
+      font-weight: 800;
+      text-shadow: 0 0 15px rgba(99, 102, 241, 0.6);
+    }
+
+    .qr-subtext {
+      font-size: 13px;
+      color: #a5b4fc;
       font-weight: 600;
     }
 
-    .status-badge {
-      background: rgba(255, 255, 255, 0.25);
-      padding: 10px 20px;
-      border-radius: 50px;
-      font-size: 13px;
-      font-weight: 700;
-      margin-top: 12px;
-      display: inline-block;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-    }
-
-    .section {
-      background: white;
+    .order-details {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+      border: 3px solid #6366f1;
       border-radius: 20px;
       padding: 25px;
-      margin-bottom: 20px;
-      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-      border: 2px solid #f0f0f0;
-    }
-
-    .section-title {
-      font-size: 20px;
-      font-weight: 800;
-      color: #667eea;
-      margin: 0 0 20px 0;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .products-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 15px;
-      margin-bottom: 20px;
-    }
-
-    .product-card {
-      background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
-      border: 3px solid #e0e7ff;
-      border-radius: 15px;
-      padding: 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.3s ease;
+      margin-top: 20px;
+      max-width: 400px;
+      width: 100%;
       position: relative;
+      z-index: 1;
+      box-shadow: 0 15px 35px rgba(99, 102, 241, 0.3);
+      animation: fadeInUp 0.5s ease-out;
     }
 
-    .product-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-      border-color: #667eea;
-    }
-
-    .product-card.selected {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-color: #667eea;
-      color: white;
-      transform: scale(1.05);
-      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
-    }
-
-    .product-icon {
-      font-size: 48px;
-      margin-bottom: 10px;
-    }
-
-    .product-name {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .product-price {
-      font-size: 18px;
-      font-weight: 900;
-      color: #667eea;
-    }
-
-    .product-card.selected .product-price {
-      color: #fff;
-    }
-
-    .payment-section {
-      opacity: 0.5;
-      pointer-events: none;
-      transition: all 0.3s ease;
-    }
-
-    .payment-section.active {
-      opacity: 1;
-      pointer-events: all;
-    }
-
-    .currency-buttons {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    .currency-btn {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      padding: 18px;
-      font-size: 20px;
-      font-weight: 900;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
-    }
-
-    .currency-btn:active {
-      transform: scale(0.95);
-      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
-    }
-
-    .payment-summary {
-      background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
-      border-radius: 15px;
-      padding: 20px;
-      margin-bottom: 20px;
-    }
-
-    .summary-row {
+    .order-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 12px 0;
-      border-bottom: 2px solid #e0e7ff;
+      border-bottom: 2px solid rgba(99, 102, 241, 0.3);
+      color: #ffffff;
       font-size: 16px;
-    }
-
-    .summary-row:last-child {
-      border-bottom: none;
-    }
-
-    .summary-label {
-      color: #6b7280;
       font-weight: 600;
     }
 
-    .summary-value {
-      font-weight: 900;
-      color: #667eea;
-      font-size: 18px;
+    .order-item:last-child {
+      border-bottom: none;
     }
 
-    .summary-value.highlight {
-      color: #10b981;
-      font-size: 22px;
-    }
-
-    .summary-value.warning {
-      color: #ef4444;
-    }
-
-    .confirm-btn {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      border-radius: 15px;
-      padding: 20px;
-      font-size: 20px;
-      font-weight: 900;
-      width: 100%;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .confirm-btn:disabled {
-      background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
-
-    .confirm-btn:active:not(:disabled) {
-      transform: scale(0.98);
-    }
-
-    .success-message {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      color: white;
-      padding: 25px;
-      border-radius: 20px;
-      text-align: center;
-      margin-top: 20px;
-      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
-      animation: slideIn 0.5s ease;
-    }
-
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .success-icon {
-      font-size: 60px;
-      margin-bottom: 15px;
-    }
-
-    .success-text {
-      font-size: 22px;
-      font-weight: 900;
-      margin-bottom: 10px;
-    }
-
-    .success-subtext {
-      font-size: 16px;
-      opacity: 0.95;
-    }
-
-    .reset-btn {
-      background: white;
-      color: #667eea;
-      border: 3px solid #667eea;
-      border-radius: 15px;
-      padding: 15px;
-      font-size: 18px;
-      font-weight: 900;
-      width: 100%;
-      cursor: pointer;
-      margin-top: 15px;
-      transition: all 0.3s ease;
-    }
-
-    .reset-btn:active {
-      transform: scale(0.98);
-      background: #667eea;
-      color: white;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 40px;
-      color: #667eea;
-      font-size: 18px;
+    .order-label {
+      color: #a5b4fc;
       font-weight: 700;
     }
 
-    .spinner {
-      border: 4px solid #f3f4f6;
-      border-top: 4px solid #667eea;
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      animation: spin 1s linear infinite;
-      margin: 20px auto;
+    .order-value {
+      font-weight: 900;
+      font-size: 18px;
+      text-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
     }
 
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    .pickup-message {
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 20px;
+      margin-top: 20px;
+      font-size: 20px;
+      font-weight: 900;
+      text-align: center;
+      animation: pulse 1.5s ease-in-out infinite;
+      position: relative;
+      z-index: 1;
+      box-shadow: 
+        0 15px 35px rgba(34, 197, 94, 0.5),
+        0 0 40px rgba(34, 197, 94, 0.3);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
 
-    .hidden {
-      display: none;
+    @media (max-width: 768px) {
+      .machine-screen {
+        width: 95%;
+        padding: 30px 20px;
+      }
+
+      .machine-title {
+        font-size: 36px;
+      }
+
+      .display-area {
+        padding: 40px 25px;
+        min-height: 500px;
+      }
+
+      .qr-code-container {
+        width: 280px;
+        height: 280px;
+      }
+
+      .state-badge {
+        font-size: 18px;
+        padding: 15px 35px;
+      }
+
+      .qr-title {
+        font-size: 28px;
+      }
+
+      .order-details {
+        padding: 25px;
+      }
     }
   </style>
   <style>@view-transition { navigation: auto; }</style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
   <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
  </head>
  <body>
-  <div class="mobile-container"><!-- Header -->
-   <header class="mobile-header">
-    <h1 class="mobile-title">📱 Mobile Payment</h1>
-    <p class="machine-id" id="machineIdDisplay">Machine: Loading...</p><span class="status-badge" id="statusBadge">🟢 Ready</span>
-   </header><!-- Product Selection -->
-   <section class="section" id="productSection">
-    <h2 class="section-title">🛒 اختر المنتج</h2>
-    <div class="products-grid" id="productsGrid"></div>
-   </section><!-- Payment Section -->
-   <section class="section payment-section" id="paymentSection">
-    <h2 class="section-title">💰 أدخل المبلغ المدفوع</h2>
-    <div class="currency-buttons"><button class="currency-btn" onclick="addAmount(1)">1 ر.س</button> <button class="currency-btn" onclick="addAmount(5)">5 ر.س</button> <button class="currency-btn" onclick="addAmount(10)">10 ر.س</button> <button class="currency-btn" onclick="addAmount(20)">20 ر.س</button> <button class="currency-btn" onclick="addAmount(50)">50 ر.س</button> <button class="currency-btn" onclick="addAmount(100)">100 ر.س</button>
-    </div>
-    <div class="payment-summary">
-     <div class="summary-row"><span class="summary-label">سعر المنتج:</span> <span class="summary-value" id="productPrice">0 ر.س</span>
+  <div class="machine-screen">
+   <header class="machine-header">
+    <h1 class="machine-title">🤖 VENDING MACHINE</h1>
+    <p class="machine-info">🆔 Machine ID: VM-001</p>
+    <p class="machine-info">📍 Location: Main Building</p>
+   </header>
+   <main class="display-area" id="displayArea">
+    <div class="qr-display">
+     <div class="state-badge idle">
+      🔵 IDLE - جاهز للاستخدام
      </div>
-     <div class="summary-row"><span class="summary-label">المبلغ المدفوع:</span> <span class="summary-value highlight" id="amountPaid">0 ر.س</span>
+     <div class="qr-title">
+      ⚡ امسح الكود للدفع ⚡
      </div>
-     <div class="summary-row"><span class="summary-label">الباقي:</span> <span class="summary-value" id="changeAmount">0 ر.س</span>
+     <div class="qr-code-container">
+      <div id="qrcode"></div>
      </div>
-    </div><button class="confirm-btn" id="confirmBtn" onclick="confirmPayment()" disabled> ✅ تأكيد الدفع </button>
-   </section><!-- Success Message -->
-   <div class="success-message hidden" id="successMessage">
-    <div class="success-icon">
-     ✅
+     <div class="qr-instruction">
+      📱 امسح الكود بهاتفك للبدء
+     </div>
+     <div class="qr-subtext">
+      Scan QR code to start payment
+     </div>
     </div>
-    <div class="success-text">
-     تم الدفع بنجاح!
-    </div>
-    <div class="success-subtext">
-     جاري تحضير طلبك...
-    </div><button class="reset-btn" onclick="resetTransaction()">🔄 طلب جديد</button>
-   </div><!-- Loading -->
-   <div class="loading hidden" id="loadingDiv">
-    <div class="spinner"></div>
-    <p>جاري المعالجة...</p>
-   </div>
+   </main>
   </div>
   <script>
-    // Products Data
-    const PRODUCTS = [
-      { id: 'P1', name: 'بيبسي', icon: '🥤', price: 5 },
-      { id: 'P2', name: 'شيبس', icon: '🍟', price: 3 },
-      { id: 'P3', name: 'شوكولاتة', icon: '🍫', price: 7 },
-      { id: 'P4', name: 'ماء', icon: '💧', price: 2 },
-      { id: 'P5', name: 'قهوة', icon: '☕', price: 8 },
-      { id: 'P6', name: 'عصير', icon: '🧃', price: 6 }
-    ];
+    const MACHINE_ID = 'VM-001';
+    const GITHUB_PAGES_URL = 'https://ayah-saleem.github.io/mobile-payment/mobile.html';
+    
+    let qrGenerated = false;
 
-    // Global Variables
-    let MACHINE_ID = '';
-    let selectedProduct = null;
-    let amountPaid = 0;
-
-    // Initialize
-    window.addEventListener('load', async () => {
-      // Get Machine ID from URL
-      const urlParams = new URLSearchParams(window.location.search);
-      MACHINE_ID = urlParams.get('machine') || 'VM-001';
-      document.getElementById('machineIdDisplay').textContent = `Machine: ${MACHINE_ID}`;
-
-      // Render Products
-      renderProducts();
-
-      // Listen to Session Updates
-      await initializeFirebase();
-    });
-
-    // Render Products
-    function renderProducts() {
-      const grid = document.getElementById('productsGrid');
-      grid.innerHTML = PRODUCTS.map(product => `
-        <div class="product-card" onclick="selectProduct('${product.id}')">
-          <div class="product-icon">${product.icon}</div>
-          <div class="product-name">${product.name}</div>
-          <div class="product-price">${product.price} ر.س</div>
-        </div>
-      `).join('');
-    }
-
-    // Select Product
-    async function selectProduct(productId) {
-      selectedProduct = PRODUCTS.find(p => p.id === productId);
+    // ال��ستماع لتحديثات Firebase
+    function listenToSession() {
+      const sessionRef = window.machineRef(window.machineDatabase, `sessions/${MACHINE_ID}`);
       
-      // Update UI
-      document.querySelectorAll('.product-card').forEach(card => {
-        card.classList.remove('selected');
-      });
-      event.target.closest('.product-card').classList.add('selected');
-
-      // Enable Payment Section
-      document.getElementById('paymentSection').classList.add('active');
-      document.getElementById('productPrice').textContent = `${selectedProduct.price} ر.س`;
-
-      // Reset Payment
-      amountPaid = 0;
-      updatePaymentSummary();
-
-      // Update Firebase - Product Selected
-      await updateFirebaseState('PRODUCT_SELECTED', {
-        selectedProductId: selectedProduct.id,
-        selectedProductName: selectedProduct.name,
-        selectedProductIcon: selectedProduct.icon,
-        selectedProductPrice: selectedProduct.price,
-        amountPaid: 0,
-        change: 0
-      });
-    }
-
-    // Add Amount
-    function addAmount(value) {
-      if (!selectedProduct) return;
-      
-      amountPaid += value;
-      updatePaymentSummary();
-    }
-
-    // Update Payment Summary
-    function updatePaymentSummary() {
-      if (!selectedProduct) return;
-
-      document.getElementById('amountPaid').textContent = `${amountPaid} ر.س`;
-      
-      const change = amountPaid - selectedProduct.price;
-      const changeEl = document.getElementById('changeAmount');
-      
-      if (change >= 0) {
-        changeEl.textContent = `${change} ر.س`;
-        changeEl.classList.remove('warning');
-        changeEl.classList.add('highlight');
-        document.getElementById('confirmBtn').disabled = false;
-      } else {
-        changeEl.textContent = `${Math.abs(change)} ر.س (ناقص)`;
-        changeEl.classList.add('warning');
-        changeEl.classList.remove('highlight');
-        document.getElementById('confirmBtn').disabled = true;
-      }
-    }
-
-    // Confirm Payment
-    async function confirmPayment() {
-      if (!selectedProduct || amountPaid < selectedProduct.price) return;
-
-      const change = amountPaid - selectedProduct.price;
-
-      // Show Loading
-      document.getElementById('loadingDiv').classList.remove('hidden');
-      document.getElementById('confirmBtn').disabled = true;
-
-      // Update Firebase - Waiting Payment
-      await updateFirebaseState('WAITING_PAYMENT', {
-        selectedProductId: selectedProduct.id,
-        selectedProductName: selectedProduct.name,
-        selectedProductIcon: selectedProduct.icon,
-        selectedProductPrice: selectedProduct.price,
-        amountPaid: amountPaid,
-        change: change
-      });
-
-      // Simulate Payment Processing
-      setTimeout(async () => {
-        // Payment Confirmed
-        await updateFirebaseState('PAYMENT_CONFIRMED', {
-          selectedProductId: selectedProduct.id,
-          selectedProductName: selectedProduct.name,
-          selectedProductIcon: selectedProduct.icon,
-          selectedProductPrice: selectedProduct.price,
-          amountPaid: amountPaid,
-          change: change
-        });
-
-        setTimeout(async () => {
-          // Dispensing
-          await updateFirebaseState('DISPENSING', {
-            selectedProductId: selectedProduct.id,
-            selectedProductName: selectedProduct.name,
-            selectedProductIcon: selectedProduct.icon,
-            selectedProductPrice: selectedProduct.price,
-            amountPaid: amountPaid,
-            change: change
-          });
-
-          setTimeout(async () => {
-            // Returning Change
-            if (change > 0) {
-              await updateFirebaseState('RETURNING_CHANGE', {
-                selectedProductId: selectedProduct.id,
-                selectedProductName: selectedProduct.name,
-                selectedProductIcon: selectedProduct.icon,
-                selectedProductPrice: selectedProduct.price,
-                amountPaid: amountPaid,
-                change: change
-              });
-
-              setTimeout(async () => {
-                // Complete
-                await completeTransaction();
-              }, 2000);
-            } else {
-              // Complete
-              await completeTransaction();
-            }
-          }, 3000);
-        }, 2000);
-      }, 1500);
-    }
-
-    // Complete Transaction
-    async function completeTransaction() {
-      const change = amountPaid - selectedProduct.price;
-
-      await updateFirebaseState('COMPLETE', {
-        selectedProductId: selectedProduct.id,
-        selectedProductName: selectedProduct.name,
-        selectedProductIcon: selectedProduct.icon,
-        selectedProductPrice: selectedProduct.price,
-        amountPaid: amountPaid,
-        change: change
-      });
-
-      // Hide Loading
-      document.getElementById('loadingDiv').classList.add('hidden');
-
-      // Show Success
-      document.getElementById('successMessage').classList.remove('hidden');
-      document.getElementById('productSection').classList.add('hidden');
-      document.getElementById('paymentSection').classList.add('hidden');
-    }
-
-    // Reset Transaction
-    async function resetTransaction() {
-      // Reset Firebase to IDLE
-      await updateFirebaseState('IDLE', {
-        selectedProductId: null,
-        selectedProductName: null,
-        selectedProductIcon: null,
-        selectedProductPrice: 0,
-        amountPaid: 0,
-        change: 0
-      });
-
-      // Reset UI
-      selectedProduct = null;
-      amountPaid = 0;
-
-      document.getElementById('successMessage').classList.add('hidden');
-      document.getElementById('productSection').classList.remove('hidden');
-      document.getElementById('paymentSection').classList.remove('hidden');
-      document.getElementById('paymentSection').classList.remove('active');
-
-      document.querySelectorAll('.product-card').forEach(card => {
-        card.classList.remove('selected');
-      });
-
-      updatePaymentSummary();
-    }
-
-    // Firebase Functions
-    async function initializeFirebase() {
-      if (!window.mobileDatabase) {
-        setTimeout(initializeFirebase, 500);
-        return;
-      }
-
-      const sessionRef = window.mobileRef(window.mobileDatabase, `sessions/${MACHINE_ID}`);
-      
-      // Listen to changes
-      window.mobileOnValue(sessionRef, (snapshot) => {
+      window.machineOnValue(sessionRef, (snapshot) => {
         const session = snapshot.val();
-        if (session) {
-          updateStatusBadge(session.state);
+        
+        if (session && session.state !== 'IDLE') {
+          updateDisplay(session);
+        } else {
+          showIdleScreen();
         }
       });
     }
 
-    async function updateFirebaseState(state, data) {
-      if (!window.mobileDatabase) return;
-
-      const sessionRef = window.mobileRef(window.mobileDatabase, `sessions/${MACHINE_ID}`);
-      await window.mobileSet(sessionRef, {
-        state: state,
-        timestamp: Date.now(),
-        ...data
-      });
+    // Show Idle Screen (QR Code)
+    function showIdleScreen() {
+      const displayArea = document.getElementById('displayArea');
+      displayArea.innerHTML = `
+        <div class="qr-display">
+          <div class="state-badge idle">🔵 IDLE - جاهز للاستخدام</div>
+          <div class="qr-title">⚡ امسح الكود للدفع ⚡</div>
+          <div class="qr-code-container">
+            <div id="qrcode"></div>
+          </div>
+          <div class="qr-instruction">📱 امسح الكود بهاتفك للبدء</div>
+          <div class="qr-subtext">Scan QR code to start payment</div>
+        </div>
+      `;
+      
+      // إعادة إنشاء QR Code في كل مرة
+      qrGenerated = false;
+      setTimeout(generateQRCode, 300);
     }
 
-    function updateStatusBadge(state) {
-      const badge = document.getElementById('statusBadge');
-      const statusMap = {
-        'IDLE': '🟢 Ready',
-        'PRODUCT_SELECTED': '🟡 Product Selected',
-        'WAITING_PAYMENT': '🟠 Waiting Payment',
-        'PAYMENT_CONFIRMED': '🟢 Payment Confirmed',
-        'DISPENSING': '🔵 Dispensing',
-        'RETURNING_CHANGE': '🟣 Returning Change',
-        'COMPLETE': '✅ Complete'
-      };
-      badge.textContent = statusMap[state] || '🟢 Ready';
+    // Generate QR Code
+    function generateQRCode() {
+      const qrcodeContainer = document.getElementById('qrcode');
+      if (!qrcodeContainer) return;
+      
+      qrcodeContainer.innerHTML = '';
+      const mobileAppUrl = `${GITHUB_PAGES_URL}?machine=${MACHINE_ID}`;
+      
+      if (typeof QRCode !== 'undefined') {
+        new QRCode(qrcodeContainer, { 
+          text: mobileAppUrl,
+          width: 170, 
+          height: 170, 
+          colorDark: "#000000", 
+          colorLight: "#ffffff", 
+          correctLevel: QRCode.CorrectLevel.H 
+        }); 
+        qrGenerated = true;
+      }
     }
 
-    // Initialize Elements SDK
-    if (window.elementSdk) {
-      const defaultConfig = {
-        primary_color: "#667eea",
-        background_color: "#ffffff"
-      };
-
-      window.elementSdk.init({
-        defaultConfig: defaultConfig,
-        onConfigChange: async (config) => {},
-        mapToCapabilities: (config) => ({
-          recolorables: [],
-          borderables: [],
-          fontEditable: undefined,
-          fontSizeable: undefined
-        }),
-        mapToEditPanelValues: (config) => new Map()
-      });
+    // Update Display Based on Session State
+    function updateDisplay(session) {
+      const displayArea = document.getElementById('displayArea');
+      const state = session.state;
+      
+      let badgeClass = 'idle';
+      let badgeText = '🔵 IDLE';
+      let statusMessage = '';
+      
+      switch(state) {
+        case 'PRODUCT_SELECTED':
+          badgeClass = 'waiting';
+          badgeText = '⏳ WAITING FOR ITEM...';
+          statusMessage = `منتج محدد: ${session.selectedProductName}`;
+          break;
+          
+        case 'WAITING_PAYMENT':
+          badgeClass = 'payment';
+          badgeText = '💳 WAITING FOR PAYMENT...';
+          statusMessage = `بانتظار الدفع: ${session.selectedProductPrice} ر.س`;
+          break;
+          
+        case 'PAYMENT_CONFIRMED':
+          badgeClass = 'payment';
+          badgeText = '✅ PAYMENT CONFIRMED';
+          statusMessage = 'تم تأكيد الدفع';
+          break;
+          
+        case 'DISPENSING':
+          badgeClass = 'dispensing';
+          badgeText = '⚙️ DISPENSING...';
+          statusMessage = 'جاري تحضير طلبك';
+          break;
+          
+        case 'RETURNING_CHANGE':
+          badgeClass = 'change';
+          badgeText = '💰 RETURNING CHANGE...';
+          statusMessage = `إرجاع الباقي: ${session.change} ر.س`;
+          break;
+          
+        case 'COMPLETE':
+          badgeClass = 'complete';
+          badgeText = '✅ COMPLETE';
+          statusMessage = 'اذهب لاستلام طلبك!';
+          break;
+      }
+      
+      displayArea.innerHTML = `
+        <div class="qr-display">
+          <div class="state-badge ${badgeClass}">${badgeText}</div>
+          
+          ${state !== 'IDLE' ? `
+            <div class="order-details">
+              <div class="order-item">
+                <span class="order-label">المنتج:</span>
+                <span class="order-value">${session.selectedProductIcon} ${session.selectedProductName}</span>
+              </div>
+              <div class="order-item">
+                <span class="order-label">السعر:</span>
+                <span class="order-value">${session.selectedProductPrice}.00 ر.س</span>
+              </div>
+              ${session.amountPaid > 0 ? `
+                <div class="order-item">
+                  <span class="order-label">المدفوع:</span>
+                  <span class="order-value" style="color: #22c55e;">${session.amountPaid}.00 ر.س</span>
+                </div>
+              ` : ''}
+              ${session.change > 0 ? `
+                <div class="order-item">
+                  <span class="order-label">الباقي:</span>
+                  <span class="order-value" style="color: #fbbf24;">${session.change}.00 ر.س</span>
+                </div>
+              ` : ''}
+            </div>
+          ` : ''}
+          
+          ${state === 'COMPLETE' ? `
+            <div class="pickup-message">
+              📦 ${statusMessage}
+            </div>
+          ` : ''}
+        </div>
+      `;
     }
+
+    // Initialize on page load
+    window.addEventListener('load', () => {
+      showIdleScreen();
+      
+      // انتظر تحميل Firebase ثم استمع للتحديثات
+      setTimeout(() => {
+        if (window.machineDatabase) {
+          listenToSession();
+        }
+      }, 1000);
+    });
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a85b5b9b7d05dab',t:'MTc2NDc5MjY1Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a85b06a92925dab',t:'MTc2NDc5MjQzNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
