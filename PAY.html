@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobile Payment App</title>
+  <script src="/_sdk/data_sdk.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      width: 100%;
+      height: 100%;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    .mobile-app {
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      background: #f5f7fa;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .app-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 25px 20px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .app-title {
+      font-size: 28px;
+      font-weight: bold;
+      color: white;
+      margin: 0 0 5px 0;
+    }
+
+    .app-subtitle {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.9);
+      margin: 0;
+    }
+
+    /* Main Content */
+    .app-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    /* Products Grid */
+    .products-section {
+      margin-bottom: 20px;
+    }
+
+    .section-header {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 15px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: bold;
+      color: #2d3748;
+      margin: 0 0 8px 0;
+    }
+
+    .section-subtitle {
+      font-size: 14px;
+      color: #718096;
+      margin: 0;
+    }
+
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+
+    .product-card {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: 3px solid transparent;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    }
+
+    .product-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .product-card.selected {
+      border-color: #48bb78;
+      background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+      transform: scale(1.05);
+    }
+
+    .product-icon {
+      font-size: 50px;
+      margin-bottom: 10px;
+    }
+
+    .product-name {
+      font-size: 16px;
+      font-weight: bold;
+      color: #2d3748;
+      margin-bottom: 8px;
+    }
+
+    .product-price {
+      font-size: 20px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    /* Payment Section */
+    .payment-section {
+      background: white;
+      border-radius: 20px;
+      padding: 25px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .selected-product-display {
+      background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .selected-icon {
+      font-size: 60px;
+      margin-bottom: 10px;
+    }
+
+    .selected-name {
+      font-size: 20px;
+      font-weight: bold;
+      color: #2d3748;
+      margin-bottom: 5px;
+    }
+
+    .selected-price {
+      font-size: 28px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .payment-info {
+      background: #f7fafc;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .info-row:last-child {
+      margin-bottom: 0;
+      padding-top: 12px;
+      border-top: 2px dashed #cbd5e0;
+    }
+
+    .info-label {
+      font-size: 14px;
+      color: #718096;
+    }
+
+    .info-value {
+      font-size: 18px;
+      font-weight: bold;
+      color: #2d3748;
+    }
+
+    .info-value.paid {
+      color: #48bb78;
+    }
+
+    .info-value.remaining {
+      color: #f56565;
+    }
+
+    .money-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .money-btn {
+      background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+      color: white;
+      border: none;
+      padding: 15px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+    }
+
+    .money-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(72, 187, 120, 0.4);
+    }
+
+    .money-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .confirm-btn {
+      flex: 2;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .confirm-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    .confirm-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .cancel-btn {
+      flex: 1;
+      background: #f56565;
+      color: white;
+      border: none;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .cancel-btn:hover {
+      background: #e53e3e;
+      transform: translateY(-2px);
+    }
+
+    /* Success Screen */
+    .success-screen {
+      background: white;
+      border-radius: 20px;
+      padding: 40px 30px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      animation: slideUp 0.5s;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .success-icon {
+      font-size: 100px;
+      margin-bottom: 20px;
+      animation: scaleIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+
+    @keyframes scaleIn {
+      0% {
+        transform: scale(0) rotate(-180deg);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+      }
+    }
+
+    .success-title {
+      font-size: 28px;
+      font-weight: bold;
+      color: #48bb78;
+      margin-bottom: 10px;
+    }
+
+    .success-message {
+      font-size: 16px;
+      color: #718096;
+      margin-bottom: 25px;
+      line-height: 1.6;
+    }
+
+    .pickup-info {
+      background: linear-gradient(135deg, #fef5e7 0%, #ffeaa7 100%);
+      border: 3px solid #f39c12;
+      color: #d68910;
+      padding: 20px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      font-size: 16px;
+      font-weight: bold;
+      line-height: 1.6;
+    }
+
+    .done-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+      color: white;
+      border: none;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 6px 20px rgba(72, 187, 120, 0.3);
+    }
+
+    .done-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(72, 187, 120, 0.4);
+    }
+
+    .loading-spinner {
+      width: 24px;
+      height: 24px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error-message {
+      background: #fff5f5;
+      border: 2px solid #fc8181;
+      color: #c53030;
+      padding: 15px;
+      border-radius: 12px;
+      margin-bottom: 15px;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    @media (max-width: 480px) {
+      .products-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .money-buttons {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body>
+  <div class="mobile-app"><!-- Header -->
+   <header class="app-header">
+    <h1 class="app-title" id="appTitle">Mobile Payment</h1>
+    <p class="app-subtitle" id="appSubtitle">Complete your purchase</p>
+   </header><!-- Main Content -->
+   <main class="app-content" id="appContent"><!-- Products will be shown here -->
+   </main>
+  </div>
+  <script>
+    // Products Database
+    const products = [
+      { id: 'P1', name: 'Nescafe', icon: '☕', price: 12 },
+      { id: 'P2', name: 'Ice Tea', icon: '🧃', price: 8 },
+      { id: 'P3', name: 'American Coffee', icon: '☕', price: 15 },
+      { id: 'P4', name: 'Latte', icon: '🥤', price: 18 },
+      { id: 'P5', name: 'Croissant', icon: '🥐', price: 10 },
+      { id: 'P6', name: 'Macaron', icon: '🍰', price: 14 }
+    ];
+
+    // استخراج معرف الماكينة من URL (عند مسح QR)
+    const urlParams = new URLSearchParams(window.location.search);
+    const machineId = urlParams.get('machine') || 'VM-001'; // افتراضياً VM-001
+
+    let selectedProduct = null;
+    let amountPaid = 0;
+    let sessionData = [];
+    let currentSessionId = null;
+
+    // Data SDK Handler
+    const dataHandler = {
+      onDataChanged(data) {
+        sessionData = data;
+        
+        if (currentSessionId) {
+          const session = data.find(s => s.machine_id === machineId && 
+                                       s.state === 'PAYMENT_CONFIRMED' || 
+                                       s.state === 'DISPENSING' || 
+                                       s.state === 'COMPLETE');
+          if (session) {
+            if (session.state === 'DISPENSING' || session.state === 'COMPLETE') {
+              showSuccessScreen(session);
+            }
+          }
+        }
+      }
+    };
+
+    // Initialize Data SDK
+    async function initDataSDK() {
+      const result = await window.dataSdk.init(dataHandler);
+      if (!result.isOk) {
+        console.error('Failed to initialize Data SDK');
+      } else {
+        // عرض شاشة المنتجات
+        showProductsScreen();
+      }
+    }
+
+    // Show Products Screen
+    function showProductsScreen() {
+      const content = document.getElementById('appContent');
+      content.innerHTML = `
+        <section class="products-section">
+          <div class="section-header">
+            <h2 class="section-title">اختر المنتج</h2>
+            <p class="section-subtitle">اختر المنتج الذي تريد شراءه من ماكينة ${machineId}</p>
+          </div>
+          
+          <div class="products-grid" id="productsGrid">
+            ${products.map(product => `
+              <div class="product-card" onclick="selectProduct('${product.id}')">
+                <div class="product-icon">${product.icon}</div>
+                <div class="product-name" id="prodName${product.id}">${product.name}</div>
+                <div class="product-price">${product.price}.00 ر.س</div>
+              </div>
+            `).join('')}
+          </div>
+        </section>
+      `;
+    }
+
+    // Select Product
+    async function selectProduct(productId) {
+      selectedProduct = products.find(p => p.id === productId);
+      if (!selectedProduct) return;
+
+      amountPaid = 0;
+      currentSessionId = 'SESSION-' + Date.now();
+
+      // إنشاء جلسة جديدة
+      const newSession = {
+        machine_id: machineId,
+        state: 'PRODUCT_SELECTED',
+        selected_product_id: selectedProduct.id,
+        selected_product_name: selectedProduct.name,
+        selected_product_price: selectedProduct.price,
+        amount_paid: 0,
+        change: 0,
+        timestamp: new Date().toISOString()
+      };
+
+      const result = await window.dataSdk.create(newSession);
+      if (!result.isOk) {
+        showError('فشل في إنشاء الجلسة');
+        return;
+      }
+
+      showPaymentScreen();
+    }
+
+    // Show Error
+    function showError(message) {
+      const content = document.getElementById('appContent');
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error-message';
+      errorDiv.textContent = message;
+      content.insertBefore(errorDiv, content.firstChild);
+      
+      setTimeout(() => errorDiv.remove(), 3000);
+    }
+
+    // Show Payment Screen
+    function showPaymentScreen() {
+      const content = document.getElementById('appContent');
+      const remaining = Math.max(0, selectedProduct.price - amountPaid);
+      
+      content.innerHTML = `
+        <section class="payment-section">
+          <div class="selected-product-display">
+            <div class="selected-icon">${selectedProduct.icon}</div>
+            <div class="selected-name">${selectedProduct.name}</div>
+            <div class="selected-price">${selectedProduct.price}.00 ر.س</div>
+          </div>
+
+          <div class="payment-info">
+            <div class="info-row">
+              <span class="info-label">المبلغ الإجمالي:</span>
+              <span class="info-value">${selectedProduct.price}.00 ر.س</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">المدفوع:</span>
+              <span class="info-value paid" id="paidAmount">${amountPaid}.00 ر.س</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">المتبقي:</span>
+              <span class="info-value remaining" id="remainingAmount">${remaining}.00 ر.س</span>
+            </div>
+          </div>
+
+          <div class="money-buttons">
+            <button class="money-btn" onclick="addMoney(5)">💵 5</button>
+            <button class="money-btn" onclick="addMoney(10)">💵 10</button>
+            <button class="money-btn" onclick="addMoney(20)">💵 20</button>
+            <button class="money-btn" onclick="addMoney(50)">💵 50</button>
+            <button class="money-btn" onclick="addMoney(100)">💵 100</button>
+            <button class="money-btn" onclick="addMoney(200)">💵 200</button>
+          </div>
+
+          <div class="action-buttons">
+            <button class="confirm-btn" id="confirmBtn" onclick="confirmPayment()" ${amountPaid < selectedProduct.price ? 'disabled' : ''}>
+              ${amountPaid < selectedProduct.price ? `بحاجة لـ ${remaining} ر.س` : '✓ تأكيد الدفع'}
+            </button>
+            <button class="cancel-btn" onclick="cancelOrder()">✕</button>
+          </div>
+        </section>
+      `;
+    }
+
+    // Add Money
+    async function addMoney(amount) {
+      amountPaid += amount;
+
+      // تحديث الجلسة
+      const session = sessionData.find(s => s.machine_id === machineId && s.state === 'PRODUCT_SELECTED');
+      if (session) {
+        session.state = 'WAITING_PAYMENT';
+        session.amount_paid = amountPaid;
+        session.timestamp = new Date().toISOString();
+
+        const result = await window.dataSdk.update(session);
+        if (!result.isOk) {
+          showError('فشل في تحديث المبلغ');
+        }
+      }
+
+      const remaining = Math.max(0, selectedProduct.price - amountPaid);
+      document.getElementById('paidAmount').textContent = `${amountPaid}.00 ر.س`;
+      document.getElementById('remainingAmount').textContent = `${remaining}.00 ر.س`;
+
+      const confirmBtn = document.getElementById('confirmBtn');
+      if (amountPaid >= selectedProduct.price) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = '✓ تأكيد الدفع';
+      } else {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = `بحاجة لـ ${remaining} ر.س`;
+      }
+    }
+
+    // Confirm Payment
+    async function confirmPayment() {
+      if (amountPaid < selectedProduct.price) return;
+
+      const confirmBtn = document.getElementById('confirmBtn');
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<span class="loading-spinner"></span>';
+
+      const session = sessionData.find(s => s.machine_id === machineId && 
+                                          (s.state === 'PRODUCT_SELECTED' || s.state === 'WAITING_PAYMENT'));
+      if (session) {
+        const change = amountPaid - selectedProduct.price;
+        session.state = 'PAYMENT_CONFIRMED';
+        session.change = change;
+        session.amount_paid = amountPaid;
+        session.timestamp = new Date().toISOString();
+
+        const result = await window.dataSdk.update(session);
+        if (!result.isOk) {
+          showError('فشل في تأكيد الدفع');
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = '✓ تأكيد الدفع';
+          return;
+        }
+
+        // محاكاة عملية التحضير
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        session.state = 'DISPENSING';
+        session.timestamp = new Date().toISOString();
+        await window.dataSdk.update(session);
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        session.state = 'COMPLETE';
+        session.timestamp = new Date().toISOString();
+        await window.dataSdk.update(session);
+      }
+    }
+
+    // Show Success Screen
+    function showSuccessScreen(session) {
+      const content = document.getElementById('appContent');
+      const change = session.change || 0;
+      
+      content.innerHTML = `
+        <div class="success-screen">
+          <div class="success-icon">✅</div>
+          <h2 class="success-title">تم الدفع بنجاح!</h2>
+          <p class="success-message">
+            تم تأكيد طلبك بنجاح<br>
+            يرجى استلام ${session.selected_product_name} من الماكينة
+          </p>
+          
+          ${change > 0 ? `
+            <div class="pickup-info">
+              💰 الباقي: ${change}.00 ر.س<br>
+              سيتم إرجاعه من الماكينة
+            </div>
+          ` : ''}
+          
+          <div class="pickup-info">
+            📦 طلبك جاهز للاستلام<br>
+            توجه إلى ماكينة ${machineId} لاستلام منتجك
+          </div>
+
+          <button class="done-btn" onclick="resetApp()">
+            ✓ تم
+          </button>
+        </div>
+      `;
+    }
+
+    // Cancel Order
+    function cancelOrder() {
+      const confirmDiv = document.createElement('div');
+      confirmDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 30px;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        z-index: 1000;
+        text-align: center;
+        min-width: 280px;
+      `;
+      confirmDiv.innerHTML = `
+        <div style="font-size: 22px; font-weight: bold; color: #2d3748; margin-bottom: 20px;">
+          إلغاء الطلب؟
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button onclick="this.parentElement.parentElement.remove()" 
+                  style="padding: 12px 25px; border: none; border-radius: 10px; 
+                         background: #e2e8f0; cursor: pointer; font-weight: bold;">
+            لا
+          </button>
+          <button onclick="confirmCancel(); this.parentElement.parentElement.remove();" 
+                  style="padding: 12px 25px; border: none; border-radius: 10px; 
+                         background: #f56565; color: white; cursor: pointer; font-weight: bold;">
+            نعم، إلغاء
+          </button>
+        </div>
+      `;
+      document.body.appendChild(confirmDiv);
+    }
+
+    async function confirmCancel() {
+      const session = sessionData.find(s => s.machine_id === machineId && 
+                                          (s.state === 'PRODUCT_SELECTED' || s.state === 'WAITING_PAYMENT'));
+      if (session) {
+        const result = await window.dataSdk.delete(session);
+        if (result.isOk) {
+          resetApp();
+        }
+      } else {
+        resetApp();
+      }
+    }
+
+    // Reset App
+    function resetApp() {
+      selectedProduct = null;
+      amountPaid = 0;
+      currentSessionId = null;
+      showProductsScreen();
+    }
+
+    // Element SDK Configuration
+    const defaultConfig = {
+      background_color: "#667eea",
+      surface_color: "#ffffff",
+      text_color: "#2d3748",
+      primary_action_color: "#667eea",
+      secondary_action_color: "#48bb78",
+      font_family: "Segoe UI",
+      font_size: 16,
+      app_title: "Mobile Payment",
+      welcome_message: "Complete your purchase",
+      product_1_name: "Nescafe",
+      product_1_price: "12",
+      product_2_name: "Ice Tea",
+      product_2_price: "8",
+      product_3_name: "American Coffee",
+      product_3_price: "15",
+      product_4_name: "Latte",
+      product_4_price: "18",
+      product_5_name: "Croissant",
+      product_5_price: "10",
+      product_6_name: "Macaron",
+      product_6_price: "14"
+    };
+
+    async function onConfigChange(config) {
+      const baseFont = config.font_family || defaultConfig.font_family;
+      const baseFontStack = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
+      const fontSize = config.font_size || defaultConfig.font_size;
+
+      document.body.style.fontFamily = `${baseFont}, ${baseFontStack}`;
+
+      const titleEl = document.getElementById('appTitle');
+      if (titleEl) {
+        titleEl.textContent = config.app_title || defaultConfig.app_title;
+        titleEl.style.fontSize = `${fontSize * 1.75}px`;
+      }
+
+      const subtitleEl = document.getElementById('appSubtitle');
+      if (subtitleEl) {
+        subtitleEl.textContent = config.welcome_message || defaultConfig.welcome_message;
+        subtitleEl.style.fontSize = `${fontSize * 0.875}px`;
+      }
+
+      products[0].name = config.product_1_name || defaultConfig.product_1_name;
+      products[0].price = parseInt(config.product_1_price) || parseInt(defaultConfig.product_1_price);
+      products[1].name = config.product_2_name || defaultConfig.product_2_name;
+      products[1].price = parseInt(config.product_2_price) || parseInt(defaultConfig.product_2_price);
+      products[2].name = config.product_3_name || defaultConfig.product_3_name;
+      products[2].price = parseInt(config.product_3_price) || parseInt(defaultConfig.product_3_price);
+      products[3].name = config.product_4_name || defaultConfig.product_4_name;
+      products[3].price = parseInt(config.product_4_price) || parseInt(defaultConfig.product_4_price);
+      products[4].name = config.product_5_name || defaultConfig.product_5_name;
+      products[4].price = parseInt(config.product_5_price) || parseInt(defaultConfig.product_5_price);
+      products[5].name = config.product_6_name || defaultConfig.product_6_name;
+      products[5].price = parseInt(config.product_6_price) || parseInt(defaultConfig.product_6_price);
+
+      if (selectedProduct) {
+        showPaymentScreen();
+      } else {
+        showProductsScreen();
+      }
+    }
+
+    function mapToCapabilities(config) {
+      return {
+        recolorables: [
+          {
+            get: () => config.background_color || defaultConfig.background_color,
+            set: (value) => {
+              config.background_color = value;
+              window.elementSdk.setConfig({ background_color: value });
+            }
+          },
+          {
+            get: () => config.surface_color || defaultConfig.surface_color,
+            set: (value) => {
+              config.surface_color = value;
+              window.elementSdk.setConfig({ surface_color: value });
+            }
+          },
+          {
+            get: () => config.text_color || defaultConfig.text_color,
+            set: (value) => {
+              config.text_color = value;
+              window.elementSdk.setConfig({ text_color: value });
+            }
+          },
+          {
+            get: () => config.primary_action_color || defaultConfig.primary_action_color,
+            set: (value) => {
+              config.primary_action_color = value;
+              window.elementSdk.setConfig({ primary_action_color: value });
+            }
+          },
+          {
+            get: () => config.secondary_action_color || defaultConfig.secondary_action_color,
+            set: (value) => {
+              config.secondary_action_color = value;
+              window.elementSdk.setConfig({ secondary_action_color: value });
+            }
+          }
+        ],
+        borderables: [],
+        fontEditable: {
+          get: () => config.font_family || defaultConfig.font_family,
+          set: (value) => {
+            config.font_family = value;
+            window.elementSdk.setConfig({ font_family: value });
+          }
+        },
+        fontSizeable: {
+          get: () => config.font_size || defaultConfig.font_size,
+          set: (value) => {
+            config.font_size = value;
+            window.elementSdk.setConfig({ font_size: value });
+          }
+        }
+      };
+    }
+
+    function mapToEditPanelValues(config) {
+      return new Map([
+        ["app_title", config.app_title || defaultConfig.app_title],
+        ["welcome_message", config.welcome_message || defaultConfig.welcome_message],
+        ["product_1_name", config.product_1_name || defaultConfig.product_1_name],
+        ["product_1_price", config.product_1_price || defaultConfig.product_1_price],
+        ["product_2_name", config.product_2_name || defaultConfig.product_2_name],
+        ["product_2_price", config.product_2_price || defaultConfig.product_2_price],
+        ["product_3_name", config.product_3_name || defaultConfig.product_3_name],
+        ["product_3_price", config.product_3_price || defaultConfig.product_3_price],
+        ["product_4_name", config.product_4_name || defaultConfig.product_4_name],
+        ["product_4_price", config.product_4_price || defaultConfig.product_4_price],
+        ["product_5_name", config.product_5_name || defaultConfig.product_5_name],
+        ["product_5_price", config.product_5_price || defaultConfig.product_5_price],
+        ["product_6_name", config.product_6_name || defaultConfig.product_6_name],
+        ["product_6_price", config.product_6_price || defaultConfig.product_6_price]
+      ]);
+    }
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      initDataSDK();
+
+      if (window.elementSdk) {
+        window.elementSdk.init({
+          defaultConfig,
+          onConfigChange,
+          mapToCapabilities,
+          mapToEditPanelValues
+        });
+      }
+    });
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a8463fb44265dab',t:'MTc2NDc3ODgxOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
