@@ -1,571 +1,928 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
- <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mobile Payment Interface</title>
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getDatabase, ref, set, onValue, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-
-    // 🔥 إعدادات Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyBzKF_fuEKbSP-8JuBZb9QkuMj9eGcBsYw",
-      authDomain: "advanced-vending-machine.firebaseapp.com",
-      databaseURL: "https://advanced-vending-machine-default-rtdb.firebaseio.com",
-      projectId: "advanced-vending-machine",
-      storageBucket: "advanced-vending-machine.firebasestorage.app",
-      messagingSenderId: "119768375164",
-      appId: "1:119768375164:web:d96d14021f495869474ef9",
-      measurementId: "G-9935V0NKQ1"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const database = getDatabase(app);
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    window.mobileDatabase = database;
-    window.mobileRef = ref;
-    window.mobileSet = set;
-    window.mobileOnValue = onValue;
-    window.mobileUpdate = update;
-  </script>
-  <style>
-    body {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      width: 100%;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow-x: hidden;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    .app-container {
-      width: 100%;
-      max-width: 480px;
-      min-height: 100vh;
-      background: #ffffff;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      display: flex;
-      flex-direction: column;
-      position: relative;
-    }
-
-    /* Header */
-    .app-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      padding: 20px;
-      text-align: center;
-      color: white;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .app-title {
-      font-size: 24px;
-      font-weight: 900;
-      margin: 0;
-      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    .machine-id {
-      font-size: 14px;
-      margin-top: 5px;
-      opacity: 0.9;
-      font-weight: 600;
-    }
-
-    /* Main Content */
-    .app-content {
-      flex: 1;
-      padding: 20px;
-      overflow-y: auto;
-    }
-
-    /* Products Grid */
-    .products-section {
-      margin-bottom: 25px;
-    }
-
-    .section-title {
-      font-size: 20px;
-      font-weight: 800;
-      color: #333;
-      margin-bottom: 15px;
-      padding-bottom: 10px;
-      border-bottom: 3px solid #667eea;
-    }
-
-    .products-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 15px;
-    }
-
-    .product-card {
-      background: linear-gradient(135deg, #f8f9ff 0%, #e8ecff 100%);
-      border: 3px solid #667eea;
-      border-radius: 15px;
-      padding: 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .product-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-
-    .product-card:hover {
-      transform: translateY(-5px) scale(1.03);
-      box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
-    }
-
-    .product-card:hover::before {
-      opacity: 1;
-    }
-
-    .product-card.selected {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-color: #764ba2;
-      color: white;
-      transform: scale(1.05);
-      box-shadow: 0 20px 40px rgba(102, 126, 234, 0.6);
-    }
-
-    .product-icon {
-      font-size: 48px;
-      margin-bottom: 10px;
-      display: block;
-    }
-
-    .product-name {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .product-price {
-      font-size: 18px;
-      font-weight: 900;
-      color: #667eea;
-    }
-
-    .product-card.selected .product-price {
-      color: #ffd700;
-    }
-
-    /* Payment Section */
-    .payment-section {
-      background: linear-gradient(135deg, #f0f4ff 0%, #e0e8ff 100%);
-      border: 3px solid #667eea;
-      border-radius: 20px;
-      padding: 25px;
-      margin-top: 20px;
-    }
-
-    .payment-title {
-      font-size: 18px;
-      font-weight: 800;
-      color: #333;
-      margin-bottom: 15px;
-      text-align: center;
-    }
-
-    .payment-buttons {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    .payment-btn {
-      background: white;
-      border: 3px solid #667eea;
-      border-radius: 12px;
-      padding: 15px 10px;
-      font-size: 18px;
-      font-weight: 900;
-      color: #667eea;
-      cursor: pointer;
-      transition: all 0.3s;
-      text-align: center;
-    }
-
-    .payment-btn:hover {
-      background: #667eea;
-      color: white;
-      transform: scale(1.05);
-    }
-
-    .payment-btn:active {
-      transform: scale(0.95);
-    }
-
-    .payment-info {
-      background: white;
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 15px;
-    }
-
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 2px solid #f0f0f0;
-      font-size: 16px;
-    }
-
-    .info-row:last-child {
-      border-bottom: none;
-    }
-
-    .info-label {
-      font-weight: 700;
-      color: #666;
-    }
-
-    .info-value {
-      font-weight: 900;
-      color: #333;
-      font-size: 18px;
-    }
-
-    .info-value.highlight {
-      color: #667eea;
-    }
-
-    /* Action Button */
-    .action-btn {
-      width: 100%;
-      padding: 18px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      border-radius: 15px;
-      font-size: 18px;
-      font-weight: 900;
-      cursor: pointer;
-      transition: all 0.3s;
-      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .action-btn:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 12px 30px rgba(102, 126, 234, 0.6);
-    }
-
-    .action-btn:active {
-      transform: translateY(0);
-    }
-
-    .action-btn:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
-
-    /* Status Messages */
-    .status-message {
-      background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
-      color: white;
-      padding: 20px;
-      border-radius: 15px;
-      text-align: center;
-      font-size: 18px;
-      font-weight: 900;
-      margin: 20px 0;
-      box-shadow: 0 10px 25px rgba(34, 197, 94, 0.4);
-      animation: slideIn 0.5s ease-out;
-    }
-
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .error-message {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      color: white;
-      padding: 15px;
-      border-radius: 12px;
-      text-align: center;
-      font-size: 16px;
-      font-weight: 700;
-      margin: 15px 0;
-      box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
-    }
-
-    /* Loading Spinner */
-    .spinner {
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-top: 4px solid white;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin: 20px auto;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .hidden {
-      display: none;
-    }
-  </style>
-  <style>@view-transition { navigation: auto; }</style>
-  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
-  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
-  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
- </head>
- <body>
-  <div class="app-container"><!-- Header -->
-   <header class="app-header">
-    <h1 class="app-title">🤖 Vending Machine</h1>
-    <p class="machine-id" id="machineIdDisplay">Machine ID: Loading...</p>
-   </header><!-- Main Content -->
-   <main class="app-content" id="appContent"><!-- Products Selection -->
-    <section class="products-section" id="productsSection">
-     <h2 class="section-title">اختر منتجك</h2>
-     <div class="products-grid" id="productsGrid"></div>
-    </section><!-- Payment Section -->
-    <section class="payment-section hidden" id="paymentSection">
-     <h3 class="payment-title">💳 إدخال المبلغ</h3>
-     <div class="payment-buttons" id="paymentButtons"><button class="payment-btn" data-amount="1">1 ر.س</button> <button class="payment-btn" data-amount="5">5 ر.س</button> <button class="payment-btn" data-amount="10">10 ر.س</button> <button class="payment-btn" data-amount="20">20 ر.س</button> <button class="payment-btn" data-amount="50">50 ر.س</button> <button class="payment-btn" data-amount="100">100 ر.س</button>
-     </div>
-     <div class="payment-info">
-      <div class="info-row"><span class="info-label">السعر:</span> <span class="info-value" id="priceDisplay">0 ر.س</span>
-      </div>
-      <div class="info-row"><span class="info-label">المدفوع:</span> <span class="info-value highlight" id="paidDisplay">0 ر.س</span>
-      </div>
-      <div class="info-row"><span class="info-label">المتبقي:</span> <span class="info-value" id="remainingDisplay">0 ر.س</span>
-      </div>
-     </div><button class="action-btn" id="confirmPaymentBtn" disabled> ✅ تأكيد الدفع </button>
-    </section><!-- Status Messages -->
-    <div id="statusContainer"></div>
-   </main>
-  </div>
-  <script>
-    let machineId = null;
-    let selectedProduct = null;
-    let totalPaid = 0;
-
-    const products = [
-      { id: 'P1', name: 'كولا', icon: '🥤', price: 5 },
-      { id: 'P2', name: 'عصير', icon: '🧃', price: 7 },
-      { id: 'P3', name: 'ماء', icon: '💧', price: 3 },
-      { id: 'P4', name: 'شيبس', icon: '🍟', price: 10 },
-      { id: 'P5', name: 'شوكولاتة', icon: '🍫', price: 8 },
-      { id: 'P6', name: 'بسكويت', icon: '🍪', price: 6 }
-    ];
-
-    // Get Machine ID from URL
-    function getMachineId() {
-      const params = new URLSearchParams(window.location.search);
-      return params.get('machine') || 'VM-001';
-    }
-
-    // Initialize App
-    function initApp() {
-      machineId = getMachineId();
-      document.getElementById('machineIdDisplay').textContent = `Machine ID: ${machineId}`;
-      renderProducts();
-      setupPaymentButtons();
-    }
-
-    // Render Products
-    function renderProducts() {
-      const grid = document.getElementById('productsGrid');
-      grid.innerHTML = products.map(product => `
-        <div class="product-card" data-product-id="${product.id}" onclick="selectProduct('${product.id}')">
-          <span class="product-icon">${product.icon}</span>
-          <div class="product-name">${product.name}</div>
-          <div class="product-price">${product.price} ر.س</div>
-        </div>
-      `).join('');
-    }
-
-    // Select Product
-    window.selectProduct = async function(productId) {
-      selectedProduct = products.find(p => p.id === productId);
-      
-      // Update UI
-      document.querySelectorAll('.product-card').forEach(card => {
-        card.classList.remove('selected');
-      });
-      document.querySelector(`[data-product-id="${productId}"]`).classList.add('selected');
-      
-      // Show Payment Section
-      document.getElementById('paymentSection').classList.remove('hidden');
-      document.getElementById('priceDisplay').textContent = `${selectedProduct.price} ر.س`;
-      
-      // Reset Payment
-      totalPaid = 0;
-      updatePaymentDisplay();
-      
-      // Update Firebase
-      const sessionRef = window.mobileRef(window.mobileDatabase, `sessions/${machineId}`);
-      await window.mobileSet(sessionRef, {
-        state: 'PRODUCT_SELECTED',
-        selectedProductId: selectedProduct.id,
-        selectedProductName: selectedProduct.name,
-        selectedProductIcon: selectedProduct.icon,
-        selectedProductPrice: selectedProduct.price,
-        amountPaid: 0,
-        change: 0,
-        timestamp: Date.now()
-      });
-      
-      showStatus('✅ تم اختيار المنتج');
-    };
-
-    // Setup Payment Buttons
-    function setupPaymentButtons() {
-      document.querySelectorAll('.payment-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const amount = parseInt(btn.dataset.amount);
-          addPayment(amount);
-        });
-      });
-      
-      document.getElementById('confirmPaymentBtn').addEventListener('click', confirmPayment);
-    }
-
-    // Add Payment
-    async function addPayment(amount) {
-      if (!selectedProduct) return;
-      
-      totalPaid += amount;
-      updatePaymentDisplay();
-      
-      // Update Firebase
-      const sessionRef = window.mobileRef(window.mobileDatabase, `sessions/${machineId}`);
-      await window.mobileUpdate(sessionRef, {
-        state: 'WAITING_PAYMENT',
-        amountPaid: totalPaid
-      });
-      
-      showStatus(`💵 تم إضافة ${amount} ر.س`);
-    }
-
-    // Update Payment Display
-    function updatePaymentDisplay() {
-      document.getElementById('paidDisplay').textContent = `${totalPaid} ر.س`;
-      const remaining = Math.max(0, selectedProduct.price - totalPaid);
-      document.getElementById('remainingDisplay').textContent = `${remaining} ر.س`;
-      
-      // Enable/Disable Confirm Button
-      const confirmBtn = document.getElementById('confirmPaymentBtn');
-      confirmBtn.disabled = totalPaid < selectedProduct.price;
-    }
-
-    // Confirm Payment
-    async function confirmPayment() {
-      if (!selectedProduct || totalPaid < selectedProduct.price) return;
-      
-      const change = totalPaid - selectedProduct.price;
-      
-      // Update Firebase
-      const sessionRef = window.mobileRef(window.mobileDatabase, `sessions/${machineId}`);
-      await window.mobileUpdate(sessionRef, {
-        state: 'PAYMENT_CONFIRMED',
-        change: change
-      });
-      
-      showStatus('✅ تم تأكيد الدفع! جاري التحضير...');
-      
-      // Simulate Dispensing
-      setTimeout(async () => {
-        await window.mobileUpdate(sessionRef, { state: 'DISPENSING' });
-        
-        setTimeout(async () => {
-          if (change > 0) {
-            await window.mobileUpdate(sessionRef, { state: 'RETURNING_CHANGE' });
-            setTimeout(async () => {
-              await window.mobileUpdate(sessionRef, { state: 'COMPLETE' });
-              showStatus(`✅ اكتمل! الباقي: ${change} ر.س`);
-              resetApp();
-            }, 2000);
-          } else {
-            await window.mobileUpdate(sessionRef, { state: 'COMPLETE' });
-            showStatus('✅ اكتمل! استلم طلبك');
-            resetApp();
-          }
-        }, 3000);
-      }, 2000);
-    }
-
-    // Show Status Message
-    function showStatus(message) {
-      const container = document.getElementById('statusContainer');
-      const statusDiv = document.createElement('div');
-      statusDiv.className = 'status-message';
-      statusDiv.textContent = message;
-      container.appendChild(statusDiv);
-      
-      setTimeout(() => {
-        statusDiv.remove();
-      }, 3000);
-    }
-
-    // Reset App
-    function resetApp() {
-      setTimeout(() => {
-        selectedProduct = null;
-        totalPaid = 0;
-        document.getElementById('paymentSection').classList.add('hidden');
-        document.querySelectorAll('.product-card').forEach(card => {
-          card.classList.remove('selected');
-        });
-        
-        // Reset Firebase to IDLE
-        const sessionRef = window.mobileRef(window.mobileDatabase, `sessions/${machineId}`);
-        window.mobileSet(sessionRef, {
-          state: 'IDLE',
-          timestamp: Date.now()
-        });
-      }, 5000);
-    }
-
-    // Initialize on Load
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        if (window.mobileDatabase) {
-          initApp();
+    <!-- 
+    ✅ STATE DESIGN PATTERN FOR MOBILE
+    ✅ EVENT-DRIVEN ARCHITECTURE
+    ✅ MODEL-VIEW SEPARATION
+    -->
+    
+    <title>Mobile Payment - State Pattern</title>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <style>
+        /* RESET */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-      }, 500);
-    });
-  </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a86950183ff5dab',t:'MTc2NDgwMTc5Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+        
+        /* BODY */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        /* MOBILE CONTAINER */
+        .mobile-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        /* HEADER */
+        .mobile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .mobile-title {
+            font-size: 28px;
+            font-weight: 900;
+            margin-bottom: 10px;
+        }
+        
+        .machine-id {
+            font-size: 16px;
+            opacity: 0.95;
+            font-weight: 600;
+        }
+        
+        /* STATUS BADGE */
+        .status-badge {
+            display: inline-block;
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 700;
+            margin: 15px 0;
+            text-transform: uppercase;
+        }
+        
+        .status-badge.idle { background: #10b981; color: white; }
+        .status-badge.product-selected { background: #f59e0b; color: white; }
+        .status-badge.waiting-payment { background: #3b82f6; color: white; }
+        .status-badge.payment-confirmed { background: #8b5cf6; color: white; }
+        .status-badge.dispensing { background: #ec4899; color: white; }
+        .status-badge.complete { background: #10b981; color: white; }
+        
+        /* SECTIONS */
+        .section {
+            background: #f8f9ff;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px solid #e0e7ff;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 900;
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* PRODUCTS */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        
+        .product-card {
+            background: white;
+            border: 3px solid #e0e7ff;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-5px);
+            border-color: #667eea;
+        }
+        
+        .product-card.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #f0f2ff 0%, #e0e7ff 100%);
+        }
+        
+        .product-card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .product-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .product-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+        
+        .product-price {
+            font-size: 18px;
+            font-weight: 900;
+            color: #667eea;
+        }
+        
+        /* MONEY */
+        .money-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+        
+        .money-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 20px;
+            font-size: 20px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .money-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+        }
+        
+        .money-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* SUMMARY */
+        .summary-card {
+            background: linear-gradient(135deg, #f0f2ff 0%, #e0e7ff 100%);
+            border: 3px solid #c7d2fe;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .summary-label {
+            font-weight: 600;
+            color: #6b7280;
+        }
+        
+        .summary-value {
+            font-weight: 900;
+            color: #667eea;
+            font-size: 22px;
+        }
+        
+        .summary-value.positive {
+            color: #10b981;
+        }
+        
+        .summary-value.negative {
+            color: #ef4444;
+        }
+        
+        /* BUTTONS */
+        .confirm-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            padding: 20px;
+            font-size: 22px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        
+        .confirm-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+        }
+        
+        .confirm-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* SUCCESS */
+        .success-message {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .success-icon {
+            font-size: 80px;
+            margin-bottom: 15px;
+        }
+        
+        .success-text {
+            font-size: 24px;
+            font-weight: 900;
+            margin-bottom: 15px;
+        }
+        
+        .success-details {
+            font-size: 18px;
+            opacity: 0.95;
+        }
+        
+        .reset-btn {
+            background: white;
+            color: #667eea;
+            border: 3px solid white;
+            border-radius: 12px;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .reset-btn:hover {
+            background: rgba(255, 255, 255, 0.9);
+        }
+        
+        /* UTILITY */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* RESPONSIVE */
+        @media (max-width: 480px) {
+            .products-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .money-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <header class="mobile-header">
+            <h1 class="mobile-title">📱 Mobile Payment</h1>
+            <div class="machine-id" id="machineIdDisplay">Machine: Loading...</div>
+            <div class="status-badge idle" id="statusBadge">🟢 Ready</div>
+        </header>
+        
+        <main id="mainContent">
+            <section class="section" id="productSection">
+                <h2 class="section-title"><span>🛒</span> <span>اختر المنتج</span></h2>
+                <div class="products-grid" id="productsGrid"></div>
+            </section>
+            
+            <section class="section" id="paymentSection">
+                <h2 class="section-title"><span>💵</span> <span>أدخل المبلغ</span></h2>
+                <div class="money-grid" id="moneyGrid"></div>
+                <div class="summary-card">
+                    <div class="summary-row">
+                        <span class="summary-label">السعر المطلوب:</span>
+                        <span class="summary-value" id="requiredAmount">0 ر.س</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">المبلغ المدفوع:</span>
+                        <span class="summary-value" id="paidAmount">0 ر.س</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">الباقي:</span>
+                        <span class="summary-value" id="changeAmount">0 ر.س</span>
+                    </div>
+                </div>
+                <button class="confirm-btn" id="confirmBtn" disabled>تأكيد الدفع</button>
+            </section>
+        </main>
+        
+        <div id="successMessage" class="hidden"></div>
+    </div>
+
+    <script>
+        // ============================================
+        // 🏗️ ARCHITECTURE DOCUMENTATION
+        // ============================================
+        /*
+        ✅ STATE DESIGN PATTERN FOR MOBILE
+        ✅ EVENT-DRIVEN ARCHITECTURE
+        ✅ MODEL-VIEW SEPARATION
+        */
+        
+        // ============================================
+        // 1️⃣ STATE DESIGN PATTERN (MOBILE)
+        // ============================================
+        
+        class MobileState {
+            constructor(name) {
+                this.name = name;
+            }
+            
+            enter(context) {
+                console.log(`[MOBILE_STATE] Entering ${this.name}`);
+            }
+            
+            exit(context) {}
+            
+            handleEvent(event, context) {
+                console.log(`[MOBILE_STATE] ${this.name} handling ${event.type}`);
+            }
+        }
+        
+        class MobileIdleState extends MobileState {
+            constructor() {
+                super('MOBILE_IDLE');
+            }
+            
+            enter(context) {
+                super.enter(context);
+                context.view.showProductSelection();
+                context.view.disablePaymentSection();
+            }
+            
+            handleEvent(event, context) {
+                super.handleEvent(event, context);
+                if (event.type === 'PRODUCT_SELECTED') {
+                    context.sessionData.selectedProduct = event.data.product;
+                    context.transitionTo(new MobilePaymentState());
+                }
+            }
+        }
+        
+        class MobilePaymentState extends MobileState {
+            constructor() {
+                super('MOBILE_PAYMENT');
+            }
+            
+            enter(context) {
+                super.enter(context);
+                context.view.enablePaymentSection();
+                context.view.updatePaymentSummary(context.sessionData);
+            }
+            
+            handleEvent(event, context) {
+                super.handleEvent(event, context);
+                if (event.type === 'MONEY_ADDED') {
+                    context.sessionData.amountPaid += event.data.amount;
+                    context.sessionData.change = context.sessionData.amountPaid - 
+                        context.sessionData.selectedProduct.price;
+                    context.view.updatePaymentSummary(context.sessionData);
+                    
+                    if (context.sessionData.amountPaid >= context.sessionData.selectedProduct.price) {
+                        context.view.enableConfirmButton();
+                    }
+                } else if (event.type === 'PAYMENT_CONFIRMED') {
+                    context.transitionTo(new MobileWaitingState());
+                }
+            }
+        }
+        
+        class MobileWaitingState extends MobileState {
+            constructor() {
+                super('MOBILE_WAITING');
+            }
+            
+            enter(context) {
+                super.enter(context);
+                context.view.showProcessing();
+                context.sendToMachine();
+            }
+            
+            handleEvent(event, context) {
+                super.handleEvent(event, context);
+                if (event.type === 'TRANSACTION_COMPLETE') {
+                    context.transitionTo(new MobileCompleteState());
+                }
+            }
+        }
+        
+        class MobileCompleteState extends MobileState {
+            constructor() {
+                super('MOBILE_COMPLETE');
+            }
+            
+            enter(context) {
+                super.enter(context);
+                context.view.showSuccess(context.sessionData);
+            }
+            
+            handleEvent(event, context) {
+                super.handleEvent(event, context);
+                if (event.type === 'RESET') {
+                    context.resetSession();
+                    context.transitionTo(new MobileIdleState());
+                }
+            }
+        }
+        
+        // ============================================
+        // 2️⃣ EVENT-DRIVEN ARCHITECTURE (MOBILE)
+        // ============================================
+        
+        class MobileEventBus {
+            constructor() {
+                this.listeners = {};
+            }
+            
+            emit(eventType, data = {}) {
+                console.log(`[MOBILE_EVENT] ${eventType}`, data);
+                const event = { type: eventType, data, timestamp: Date.now() };
+                
+                if (this.listeners[eventType]) {
+                    this.listeners[eventType].forEach(callback => callback(event));
+                }
+            }
+            
+            on(eventType, callback) {
+                if (!this.listeners[eventType]) {
+                    this.listeners[eventType] = [];
+                }
+                this.listeners[eventType].push(callback);
+            }
+        }
+        
+        // ============================================
+        // 3️⃣ MODEL-VIEW SEPARATION (MOBILE)
+        // ============================================
+        
+        // MODEL (Pure Data)
+        class MobileModel {
+            constructor() {
+                this.products = [
+                    { id: 'P1', name: 'بيبسي', icon: '🥤', price: 5 },
+                    { id: 'P2', name: 'شيبس', icon: '🍟', price: 3 },
+                    { id: 'P3', name: 'شوكولاتة', icon: '🍫', price: 7 },
+                    { id: 'P4', name: 'ماء', icon: '💧', price: 2 },
+                    { id: 'P5', name: 'قهوة', icon: '☕', price: 10 },
+                    { id: 'P6', name: 'عصير', icon: '🧃', price: 6 }
+                ];
+                
+                this.moneyDenominations = [1, 5, 10, 20, 50, 100];
+                this.sessionData = {
+                    selectedProduct: null,
+                    amountPaid: 0,
+                    change: 0
+                };
+            }
+            
+            getProductById(id) {
+                return this.products.find(p => p.id === id);
+            }
+            
+            getAllProducts() {
+                return [...this.products];
+            }
+            
+            getMoneyDenominations() {
+                return [...this.moneyDenominations];
+            }
+            
+            addPayment(amount) {
+                this.sessionData.amountPaid += amount;
+                this.sessionData.change = this.sessionData.amountPaid - 
+                    (this.sessionData.selectedProduct ? this.sessionData.selectedProduct.price : 0);
+                return this.sessionData;
+            }
+            
+            selectProduct(product) {
+                this.sessionData.selectedProduct = product;
+                this.sessionData.amountPaid = 0;
+                this.sessionData.change = 0;
+                return this.sessionData;
+            }
+            
+            resetSession() {
+                this.sessionData = {
+                    selectedProduct: null,
+                    amountPaid: 0,
+                    change: 0
+                };
+                return this.sessionData;
+            }
+            
+            isPaymentComplete() {
+                if (!this.sessionData.selectedProduct) return false;
+                return this.sessionData.amountPaid >= this.sessionData.selectedProduct.price;
+            }
+            
+            getSessionData() {
+                return { ...this.sessionData };
+            }
+        }
+        
+        // VIEW (Display Only)
+        class MobileView {
+            constructor(model) {
+                this.model = model;
+                this.statusBadge = document.getElementById('statusBadge');
+                this.productsGrid = document.getElementById('productsGrid');
+                this.moneyGrid = document.getElementById('moneyGrid');
+                this.confirmBtn = document.getElementById('confirmBtn');
+                this.mainContent = document.getElementById('mainContent');
+                this.successMessage = document.getElementById('successMessage');
+            }
+            
+            update(sessionData) {
+                this.updatePaymentSummary(sessionData);
+                this.updateProductSelection(sessionData);
+                this.updateConfirmButton(sessionData);
+            }
+            
+            updatePaymentSummary(sessionData) {
+                document.getElementById('requiredAmount').textContent = 
+                    `${sessionData.selectedProduct?.price || 0} ر.س`;
+                document.getElementById('paidAmount').textContent = 
+                    `${sessionData.amountPaid} ر.س`;
+                
+                const changeElement = document.getElementById('changeAmount');
+                changeElement.textContent = `${sessionData.change} ر.س`;
+                changeElement.className = 'summary-value';
+                
+                if (sessionData.change > 0) {
+                    changeElement.classList.add('positive');
+                } else if (sessionData.change < 0) {
+                    changeElement.classList.add('negative');
+                }
+            }
+            
+            updateProductSelection(sessionData) {
+                document.querySelectorAll('.product-card').forEach(card => {
+                    card.classList.remove('selected');
+                    if (sessionData.selectedProduct && 
+                        card.dataset.productId === sessionData.selectedProduct.id) {
+                        card.classList.add('selected');
+                    }
+                });
+            }
+            
+            updateConfirmButton(sessionData) {
+                if (sessionData.selectedProduct && 
+                    sessionData.amountPaid >= sessionData.selectedProduct.price) {
+                    this.confirmBtn.disabled = false;
+                } else {
+                    this.confirmBtn.disabled = true;
+                }
+            }
+            
+            showProductSelection() {
+                this.mainContent.classList.remove('hidden');
+                this.successMessage.classList.add('hidden');
+                this.renderProducts();
+                this.renderMoneyButtons();
+            }
+            
+            renderProducts() {
+                const products = this.model.getAllProducts();
+                this.productsGrid.innerHTML = products.map(product => `
+                    <div class="product-card" data-product-id="${product.id}">
+                        <div class="product-icon">${product.icon}</div>
+                        <div class="product-name">${product.name}</div>
+                        <div class="product-price">${product.price} ر.س</div>
+                    </div>
+                `).join('');
+            }
+            
+            renderMoneyButtons() {
+                const denominations = this.model.getMoneyDenominations();
+                this.moneyGrid.innerHTML = denominations.map(amount => `
+                    <button class="money-btn" data-amount="${amount}" disabled>
+                        💵 ${amount} ر.س
+                    </button>
+                `).join('');
+            }
+            
+            disablePaymentSection() {
+                document.querySelectorAll('.money-btn').forEach(btn => btn.disabled = true);
+                this.confirmBtn.disabled = true;
+            }
+            
+            enablePaymentSection() {
+                document.querySelectorAll('.money-btn').forEach(btn => btn.disabled = false);
+            }
+            
+            enableConfirmButton() {
+                this.confirmBtn.disabled = false;
+            }
+            
+            showProcessing() {
+                this.confirmBtn.innerHTML = '<span class="loading"></span> جاري المعالجة...';
+                this.confirmBtn.disabled = true;
+                document.querySelectorAll('.product-card').forEach(card => card.classList.add('disabled'));
+                document.querySelectorAll('.money-btn').forEach(btn => btn.disabled = true);
+            }
+            
+            showSuccess(sessionData) {
+                this.mainContent.classList.add('hidden');
+                this.successMessage.classList.remove('hidden');
+                this.successMessage.innerHTML = `
+                    <div class="success-message">
+                        <div class="success-icon">✅</div>
+                        <div class="success-text">تم الدفع بنجاح!</div>
+                        <div class="success-details">
+                            <div style="font-size: 48px; margin: 20px 0;">
+                                ${sessionData.selectedProduct.icon}
+                            </div>
+                            <div style="font-size: 22px; font-weight: 700;">
+                                ${sessionData.selectedProduct.name}
+                            </div>
+                            <div style="font-size: 20px; margin-top: 15px;">
+                                السعر: ${sessionData.selectedProduct.price} ر.س
+                            </div>
+                            <div style="font-size: 20px; margin-top: 10px;">
+                                المدفوع: ${sessionData.amountPaid} ر.س
+                            </div>
+                            ${sessionData.change > 0 ? `
+                                <div style="font-size: 20px; margin-top: 10px;">
+                                    الباقي: ${sessionData.change} ر.س
+                                </div>
+                            ` : ''}
+                            <div style="font-size: 24px; margin-top: 25px; font-weight: 900;">
+                                🎁 اذهب لاستلام طلبك من الماكينة!
+                            </div>
+                        </div>
+                        <button class="reset-btn" id="resetBtn">🔄 طلب جديد</button>
+                    </div>
+                `;
+            }
+            
+            updateStatusBadge(state) {
+                const statusMap = {
+                    'IDLE': { text: '🟢 Ready', class: 'idle' },
+                    'PRODUCT_SELECTED': { text: '🟡 Product Selected', class: 'product-selected' },
+                    'WAITING_PAYMENT': { text: '🔵 Processing', class: 'waiting-payment' },
+                    'PAYMENT_CONFIRMED': { text: '🟣 Confirmed', class: 'payment-confirmed' },
+                    'DISPENSING': { text: '🔴 Dispensing', class: 'dispensing' },
+                    'COMPLETE': { text: '🟢 Complete', class: 'complete' }
+                };
+                
+                const status = statusMap[state] || statusMap['IDLE'];
+                this.statusBadge.textContent = status.text;
+                this.statusBadge.className = `status-badge ${status.class}`;
+            }
+        }
+        
+        // ============================================
+        // 4️⃣ MOBILE CONTEXT (State Machine)
+        // ============================================
+        
+        class MobileContext {
+            constructor(machineId) {
+                this.machineId = machineId;
+                this.model = new MobileModel();
+                this.view = new MobileView(this.model);
+                this.eventBus = new MobileEventBus();
+                this.currentState = null;
+                this.sessionData = this.model.getSessionData();
+                
+                this.registerEventHandlers();
+                this.registerUIHandlers();
+                this.transitionTo(new MobileIdleState());
+            }
+            
+            registerEventHandlers() {
+                const eventTypes = ['PRODUCT_SELECTED', 'MONEY_ADDED', 'PAYMENT_CONFIRMED', 
+                                   'TRANSACTION_COMPLETE', 'RESET'];
+                
+                eventTypes.forEach(eventType => {
+                    this.eventBus.on(eventType, (event) => {
+                        if (this.currentState) {
+                            this.currentState.handleEvent(event, this);
+                        }
+                    });
+                });
+            }
+            
+            registerUIHandlers() {
+                // Product selection
+                document.addEventListener('click', (e) => {
+                    const productCard = e.target.closest('.product-card');
+                    if (productCard && this.currentState.name === 'MOBILE_IDLE') {
+                        const productId = productCard.dataset.productId;
+                        const product = this.model.getProductById(productId);
+                        
+                        if (product) {
+                            const sessionData = this.model.selectProduct(product);
+                            this.view.update(sessionData);
+                            this.eventBus.emit('PRODUCT_SELECTED', { product });
+                            this.sendProductToFirebase(product);
+                        }
+                    }
+                });
+                
+                // Money buttons
+                document.addEventListener('click', (e) => {
+                    const moneyBtn = e.target.closest('.money-btn');
+                    if (moneyBtn && !moneyBtn.disabled) {
+                        const amount = parseInt(moneyBtn.dataset.amount);
+                        const sessionData = this.model.addPayment(amount);
+                        this.view.update(sessionData);
+                        this.eventBus.emit('MONEY_ADDED', { amount });
+                        this.updatePaymentInFirebase(sessionData.amountPaid);
+                    }
+                });
+                
+                // Confirm button
+                document.addEventListener('click', (e) => {
+                    if (e.target.id === 'confirmBtn' && !e.target.disabled) {
+                        this.eventBus.emit('PAYMENT_CONFIRMED', {});
+                        this.sendPaymentConfirmedToFirebase();
+                    }
+                });
+                
+                // Reset button
+                document.addEventListener('click', (e) => {
+                    if (e.target.id === 'resetBtn') {
+                        this.eventBus.emit('RESET', {});
+                    }
+                });
+            }
+            
+            transitionTo(newState) {
+                console.log(`[MOBILE_STATE] ${this.currentState?.name || 'null'} → ${newState.name}`);
+                
+                if (this.currentState) {
+                    this.currentState.exit(this);
+                }
+                
+                this.currentState = newState;
+                this.currentState.enter(this);
+            }
+            
+            sendProductToFirebase(product) {
+                if (!window.firebaseDatabase) return;
+                
+                const sessionRef = window.firebaseRef(window.firebaseDatabase, `sessions/${this.machineId}`);
+                window.firebaseSet(sessionRef, {
+                    state: 'PRODUCT_SELECTED',
+                    selectedProductId: product.id,
+                    selectedProductName: product.name,
+                    selectedProductIcon: product.icon,
+                    selectedProductPrice: product.price,
+                    amountPaid: 0,
+                    change: 0,
+                    timestamp: Date.now()
+                });
+            }
+            
+            updatePaymentInFirebase(amountPaid) {
+                if (!window.firebaseDatabase) return;
+                
+                const sessionRef = window.firebaseRef(window.firebaseDatabase, `sessions/${this.machineId}`);
+                window.firebaseSet(sessionRef, {
+                    state: 'WAITING_PAYMENT',
+                    amountPaid: amountPaid,
+                    timestamp: Date.now()
+                });
+            }
+            
+            sendPaymentConfirmedToFirebase() {
+                if (!window.firebaseDatabase) return;
+                
+                const sessionRef = window.firebaseRef(window.firebaseDatabase, `sessions/${this.machineId}`);
+                window.firebaseSet(sessionRef, {
+                    state: 'PAYMENT_CONFIRMED',
+                    timestamp: Date.now()
+                });
+            }
+            
+            sendToMachine() {
+                if (!window.firebaseDatabase) return;
+                
+                const sessionRef = window.firebaseRef(window.firebaseDatabase, `sessions/${this.machineId}`);
+                window.firebaseSet(sessionRef, {
+                    state: 'WAITING_PAYMENT',
+                    amountPaid: this.model.getSessionData().amountPaid,
+                    timestamp: Date.now()
+                });
+            }
+            
+            resetSession() {
+                this.model.resetSession();
+                this.view.showProductSelection();
+                
+                if (window.firebaseDatabase) {
+                    const sessionRef = window.firebaseRef(window.firebaseDatabase, `sessions/${this.machineId}`);
+                    window.firebaseSet(sessionRef, {
+                        state: 'IDLE',
+                        timestamp: Date.now()
+                    });
+                }
+            }
+        }
+        
+        // ============================================
+        // 5️⃣ FIREBASE INITIALIZATION
+        // ============================================
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyBzKF_fuEKbSP-8JuBZb9QkuMj9eGcBsYw",
+            authDomain: "advanced-vending-machine.firebaseapp.com",
+            databaseURL: "https://advanced-vending-machine-default-rtdb.firebaseio.com",
+            projectId: "advanced-vending-machine",
+            storageBucket: "advanced-vending-machine.firebasestorage.app",
+            messagingSenderId: "119768375164",
+            appId: "1:119768375164:web:d96d14021f495869474ef9"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        window.firebaseDatabase = firebase.database();
+        window.firebaseRef = (path) => firebase.database().ref(path);
+        window.firebaseSet = (ref, data) => ref.set(data);
+        window.firebaseOnValue = (ref, callback) => ref.on('value', callback);
+        
+        // ============================================
+        // 6️⃣ APPLICATION INITIALIZATION
+        // ============================================
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            // Get machine ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const machineId = urlParams.get('machine') || 'VM-001';
+            
+            // Display machine ID
+            document.getElementById('machineIdDisplay').textContent = `Machine: ${machineId}`;
+            
+            // Create Mobile Context
+            const mobileContext = new MobileContext(machineId);
+            
+            // Listen to Firebase for machine state updates
+            const sessionRef = window.firebaseRef(window.firebaseDatabase, `sessions/${machineId}`);
+            window.firebaseOnValue(sessionRef, (snapshot) => {
+                const data = snapshot.val();
+                if (!data) return;
+                
+                mobileContext.view.updateStatusBadge(data.state);
+                
+                if (data.state === 'COMPLETE' && mobileContext.currentState.name === 'MOBILE_WAITING') {
+                    mobileContext.eventBus.emit('TRANSACTION_COMPLETE', {});
+                }
+            });
+            
+            console.log('[MOBILE] System Initialized Successfully');
+        });
+    </script>
+</body>
 </html>
