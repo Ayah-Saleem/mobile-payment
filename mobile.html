@@ -6,7 +6,7 @@
   <title>Mobile Payment - Vending Machine</title><!-- Firebase SDK -->
   <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+import { getDatabase, ref, set, onValue, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBzKF_fuEKbSP-8JuBZb9QkuMj9eGcBsYw",
@@ -22,10 +22,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-window.mobileDatabase = database;
-window.mobileRef = ref;
-window.mobileSet = set;
-window.mobileOnValue = onValue;
+window.firebaseDB = database;
+window.firebaseRef = ref;
+window.firebaseSet = set;
+window.firebaseUpdate = update;
+window.firebaseOnValue = onValue;
+window.firebaseInitialized = true;
 </script>
   <style>
 body {
@@ -39,7 +41,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow-x: hidden;
 }
 
 * {
@@ -84,10 +85,7 @@ body {
 .mobile-title {
   font-size: 28px;
   font-weight: 900;
-  background: linear-gradient(135deg, #6366f1 0%, #ec4899 50%, #8b5cf6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #ffffff;
   margin: 0 0 10px 0;
   animation: pulse 3s ease-in-out infinite;
 }
@@ -117,10 +115,7 @@ body {
 .section-title {
   font-size: 20px;
   font-weight: 900;
-  background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #ffffff;
   margin-bottom: 20px;
   text-align: center;
 }
@@ -222,6 +217,46 @@ body {
 
 .payment-section {
   margin-top: 25px;
+}
+
+.payment-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.payment-option {
+  padding: 15px 10px;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 2px solid rgba(99, 102, 241, 0.3);
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.payment-option:hover {
+  border-color: #6366f1;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(99, 102, 241, 0.4);
+}
+
+.payment-option.selected {
+  border-color: #22c55e;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(16, 185, 129, 0.2) 100%);
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+}
+
+.payment-divider {
+  text-align: center;
+  color: #a5b4fc;
+  font-weight: 700;
+  margin: 15px 0;
+  font-size: 14px;
 }
 
 .payment-input {
@@ -399,7 +434,7 @@ body {
     <div class="machine-id" id="machineIdDisplay">
      Machine: Loading...
     </div>
-   </header><!-- Current State Display -->
+   </header>
    <div class="current-state">
     <div class="state-label">
      Current State
@@ -410,21 +445,22 @@ body {
    </div><!-- Step 1: Product Selection -->
    <div class="content-area" id="productSelectionArea">
     <h2 class="section-title">🛒 اختر المنتج</h2>
-    <div class="products-grid" id="productsGrid"><!-- Products will be loaded here -->
-    </div>
+    <div class="products-grid" id="productsGrid"></div>
    </div><!-- Step 2: Payment -->
    <div class="content-area hidden" id="paymentArea">
     <h2 class="section-title">💳 الدفع</h2>
-    <div class="selected-product-info" id="selectedProductInfo"><!-- Selected product info will be shown here -->
-    </div>
-    <div class="payment-section"><input type="number" class="payment-input" id="paymentInput" placeholder="أدخل المبلغ المدفوع (₪)" min="0" step="0.01"> <button class="btn btn-success" id="confirmPaymentBtn"> ✅ تأكيد الدفع </button> <button class="btn btn-warning" id="cancelBtn"> ❌ إلغاء </button>
+    <div class="selected-product-info" id="selectedProductInfo"></div>
+    <div class="payment-section">
+     <div class="payment-options" id="paymentOptions"></div>
+     <div class="payment-divider">
+      أو أدخل مبلغ مخصص
+     </div><input type="number" class="payment-input" id="customPaymentInput" placeholder="أدخل المبلغ (₪)" min="0" step="0.01"> <button class="btn btn-success" id="confirmPaymentBtn"> ✅ تأكيد الدفع </button> <button class="btn btn-warning" id="cancelBtn"> ❌ إلغاء </button>
     </div>
     <div id="statusMessage"></div>
    </div><!-- Step 3: Transaction Complete -->
    <div class="content-area hidden" id="completeArea">
     <h2 class="section-title">✅ تمت العملية بنجاح</h2>
-    <div class="selected-product-info" id="completeInfo"><!-- Transaction summary will be shown here -->
-    </div>
+    <div class="selected-product-info" id="completeInfo"></div>
     <div class="status-message status-success">
      📦 اذهب لاستلام طلبك من الماكينة!
     </div><button class="btn btn-primary" id="newTransactionBtn" style="margin-top: 20px;"> 🔄 عملية جديدة </button>
@@ -432,7 +468,7 @@ body {
   </div>
   <script>
 // ============================================================================
-// MOBILE APP - STATE MACHINE CLIENT
+// MOBILE PAYMENT APP
 // ============================================================================
 
 const PRODUCTS = [
@@ -444,16 +480,17 @@ const PRODUCTS = [
   { id: 'P006', name: 'بسكويت', icon: '🍪', price: 3.00 }
 ];
 
+const PAYMENT_AMOUNTS = [1, 5, 10, 20, 50, 100];
+
 class MobilePaymentApp {
   constructor() {
     this.machineId = this.getMachineIdFromURL();
     this.selectedProduct = null;
+    this.selectedAmount = null;
     this.currentState = 'IDLE';
     
     this.initializeElements();
-    this.loadProducts();
-    this.setupEventListeners();
-    this.listenToMachineState();
+    this.waitForFirebase();
     
     document.getElementById('machineIdDisplay').textContent = `Machine: ${this.machineId}`;
   }
@@ -468,12 +505,24 @@ class MobilePaymentApp {
     this.paymentArea = document.getElementById('paymentArea');
     this.completeArea = document.getElementById('completeArea');
     this.productsGrid = document.getElementById('productsGrid');
-    this.paymentInput = document.getElementById('paymentInput');
+    this.paymentOptions = document.getElementById('paymentOptions');
+    this.customPaymentInput = document.getElementById('customPaymentInput');
     this.confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
     this.cancelBtn = document.getElementById('cancelBtn');
     this.newTransactionBtn = document.getElementById('newTransactionBtn');
     this.statusMessage = document.getElementById('statusMessage');
     this.currentStateDisplay = document.getElementById('currentStateDisplay');
+  }
+
+  waitForFirebase() {
+    if (window.firebaseInitialized && window.firebaseDB) {
+      console.log('[MOBILE] Firebase initialized');
+      this.loadProducts();
+      this.setupEventListeners();
+      this.listenToMachineState();
+    } else {
+      setTimeout(() => this.waitForFirebase(), 100);
+    }
   }
 
   loadProducts() {
@@ -486,7 +535,7 @@ class MobilePaymentApp {
         <div class="product-name">${product.name}</div>
         <div class="product-price">${product.price.toFixed(2)} ₪</div>
       `;
-      productCard.addEventListener('click', () => this.selectProduct(product));
+      productCard.addEventListener('click', () => this.selectProduct(product, productCard));
       this.productsGrid.appendChild(productCard);
     });
   }
@@ -495,26 +544,28 @@ class MobilePaymentApp {
     this.confirmPaymentBtn.addEventListener('click', () => this.confirmPayment());
     this.cancelBtn.addEventListener('click', () => this.cancelTransaction());
     this.newTransactionBtn.addEventListener('click', () => this.startNewTransaction());
+    
+    this.customPaymentInput.addEventListener('input', () => {
+      this.selectedAmount = null;
+      document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('selected'));
+    });
   }
 
-  async selectProduct(product) {
+  async selectProduct(product, cardElement) {
     this.selectedProduct = product;
     
-    // Highlight selected product
     document.querySelectorAll('.product-card').forEach(card => {
       card.classList.remove('selected');
     });
-    event.currentTarget.classList.add('selected');
+    cardElement.classList.add('selected');
 
-    // Update Firebase with PRODUCT_SELECTED state
     await this.updateMachineState('PRODUCT_SELECTED', {
-      selectedProductId: product.id,
-      selectedProductName: product.name,
-      selectedProductIcon: product.icon,
-      selectedProductPrice: product.price
+      productId: product.id,
+      productName: product.name,
+      productIcon: product.icon,
+      productPrice: product.price
     });
 
-    // Show payment area
     this.showPaymentArea();
   }
 
@@ -534,15 +585,39 @@ class MobilePaymentApp {
       </div>
     `;
 
-    this.paymentInput.value = '';
+    this.loadPaymentOptions();
+    this.customPaymentInput.value = '';
+    this.selectedAmount = null;
     this.statusMessage.innerHTML = '';
   }
 
+  loadPaymentOptions() {
+    this.paymentOptions.innerHTML = '';
+
+    PAYMENT_AMOUNTS.forEach(amount => {
+      const option = document.createElement('div');
+      option.className = 'payment-option';
+      option.textContent = `${amount} ₪`;
+      option.addEventListener('click', () => this.selectPaymentAmount(amount, option));
+      this.paymentOptions.appendChild(option);
+    });
+  }
+
+  selectPaymentAmount(amount, optionElement) {
+    this.selectedAmount = amount;
+    this.customPaymentInput.value = '';
+    
+    document.querySelectorAll('.payment-option').forEach(opt => {
+      opt.classList.remove('selected');
+    });
+    optionElement.classList.add('selected');
+  }
+
   async confirmPayment() {
-    const amountPaid = parseFloat(this.paymentInput.value);
+    let amountPaid = this.selectedAmount || parseFloat(this.customPaymentInput.value);
 
     if (!amountPaid || amountPaid <= 0) {
-      this.showStatus('error', '❌ الرجاء إدخال مبلغ صحيح');
+      this.showStatus('error', '❌ الرجاء اختيار أو إدخال مبلغ صحيح');
       return;
     }
 
@@ -551,51 +626,57 @@ class MobilePaymentApp {
       return;
     }
 
-    // Disable button and show loading
     this.confirmPaymentBtn.disabled = true;
     this.confirmPaymentBtn.innerHTML = '⏳ جاري المعالجة... <span class="loading"></span>';
 
-    // Update to WAITING_PAYMENT
+    const change = amountPaid - this.selectedProduct.price;
+
     await this.updateMachineState('WAITING_PAYMENT', {
-      amountPaid: amountPaid
+      amountPaid: amountPaid,
+      change: change
     });
 
-    // Wait a moment, then confirm payment
     setTimeout(async () => {
-      const change = amountPaid - this.selectedProduct.price;
-      
-      // Update to PAYMENT_CONFIRMED
       await this.updateMachineState('PAYMENT_CONFIRMED', {
         amountPaid: amountPaid,
         change: change
       });
 
-      // Trigger dispensing
       setTimeout(async () => {
-        await this.updateMachineState('DISPENSING', {});
-        
-        // Check if change is needed
+        await this.updateMachineState('DISPENSING', {
+          amountPaid: amountPaid,
+          change: change
+        });
+
         setTimeout(async () => {
           if (change > 0) {
-            await this.updateMachineState('RETURNING_CHANGE', {});
+            await this.updateMachineState('RETURNING_CHANGE', {
+              amountPaid: amountPaid,
+              change: change
+            });
+            
             setTimeout(async () => {
-              await this.updateMachineState('COMPLETE', {});
-              this.showCompleteArea();
+              await this.updateMachineState('COMPLETE', {
+                amountPaid: amountPaid,
+                change: change
+              });
+              this.showCompleteArea(amountPaid, change);
             }, 2000);
           } else {
-            await this.updateMachineState('COMPLETE', {});
-            this.showCompleteArea();
+            await this.updateMachineState('COMPLETE', {
+              amountPaid: amountPaid,
+              change: 0
+            });
+            this.showCompleteArea(amountPaid, 0);
           }
         }, 2000);
       }, 1500);
     }, 1000);
   }
 
-  showCompleteArea() {
+  showCompleteArea(amountPaid, change) {
     this.paymentArea.classList.add('hidden');
     this.completeArea.classList.remove('hidden');
-
-    const change = parseFloat(this.paymentInput.value) - this.selectedProduct.price;
 
     document.getElementById('completeInfo').innerHTML = `
       <div class="info-row">
@@ -608,7 +689,7 @@ class MobilePaymentApp {
       </div>
       <div class="info-row">
         <span class="info-label">المدفوع:</span>
-        <span class="info-value" style="color: #22c55e;">${parseFloat(this.paymentInput.value).toFixed(2)} ₪</span>
+        <span class="info-value" style="color: #22c55e;">${amountPaid.toFixed(2)} ₪</span>
       </div>
       ${change > 0 ? `
       <div class="info-row">
@@ -628,6 +709,7 @@ class MobilePaymentApp {
     await this.updateMachineState('IDLE', {});
     
     this.selectedProduct = null;
+    this.selectedAmount = null;
     this.productSelectionArea.classList.remove('hidden');
     this.paymentArea.classList.add('hidden');
     this.completeArea.classList.add('hidden');
@@ -643,12 +725,11 @@ class MobilePaymentApp {
   showStatus(type, message) {
     this.statusMessage.className = `status-message status-${type}`;
     this.statusMessage.textContent = message;
-    this.statusMessage.classList.remove('hidden');
   }
 
   async updateMachineState(state, additionalData = {}) {
-    if (!window.mobileDatabase) {
-      console.error('Firebase not initialized');
+    if (!window.firebaseDB) {
+      console.error('[MOBILE] Firebase not initialized');
       return;
     }
 
@@ -659,55 +740,42 @@ class MobilePaymentApp {
     };
 
     if (this.selectedProduct) {
-      sessionData.selectedProductId = this.selectedProduct.id;
-      sessionData.selectedProductName = this.selectedProduct.name;
-      sessionData.selectedProductIcon = this.selectedProduct.icon;
-      sessionData.selectedProductPrice = this.selectedProduct.price;
+      sessionData.productId = this.selectedProduct.id;
+      sessionData.productName = this.selectedProduct.name;
+      sessionData.productIcon = this.selectedProduct.icon;
+      sessionData.productPrice = this.selectedProduct.price;
     }
 
-    const sessionRef = window.mobileRef(window.mobileDatabase, `sessions/${this.machineId}`);
-    await window.mobileSet(sessionRef, sessionData);
+    const sessionRef = window.firebaseRef(window.firebaseDB, `machines/${this.machineId}/session`);
+    await window.firebaseSet(sessionRef, sessionData);
     
     console.log(`[MOBILE] Updated state to: ${state}`, sessionData);
   }
 
   listenToMachineState() {
-    if (!window.mobileDatabase) {
-      setTimeout(() => this.listenToMachineState(), 500);
-      return;
-    }
-
-    const sessionRef = window.mobileRef(window.mobileDatabase, `sessions/${this.machineId}`);
+    const sessionRef = window.firebaseRef(window.firebaseDB, `machines/${this.machineId}/session`);
     
-    window.mobileOnValue(sessionRef, (snapshot) => {
+    window.firebaseOnValue(sessionRef, (snapshot) => {
       const session = snapshot.val();
       
-      if (!session || !session.state) return;
+      if (!session || !session.state) {
+        this.currentState = 'IDLE';
+        this.currentStateDisplay.textContent = 'IDLE';
+        return;
+      }
       
       this.currentState = session.state;
       this.currentStateDisplay.textContent = session.state;
       
-      console.log('[MOBILE] Machine state changed to:', session.state);
+      console.log('[MOBILE] Machine state:', session.state);
     });
   }
 }
 
-// ============================================================================
-// INITIALIZATION
-// ============================================================================
 window.addEventListener('load', () => {
-  // Wait for Firebase to initialize
-  const initApp = () => {
-    if (window.mobileDatabase) {
-      new MobilePaymentApp();
-      console.log('Mobile Payment App Initialized');
-    } else {
-      setTimeout(initApp, 100);
-    }
-  };
-  
-  initApp();
+  new MobilePaymentApp();
+  console.log('[MOBILE] Mobile Payment App Initialized');
 });
 </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a96e06121265daa',t:'MTc2NDk3MjY1Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a970bbe57905daa',t:'MTc2NDk3NDQzMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
