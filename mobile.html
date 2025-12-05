@@ -1,928 +1,888 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- 
-    ✅ STATE DESIGN PATTERN FOR MOBILE
-    ✅ EVENT-DRIVEN ARCHITECTURE
-    ✅ MODEL-VIEW SEPARATION
-    -->
-    
-    <title>Mobile Payment - State Pattern</title>
-    
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-    
-    <style>
-        /* RESET */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        /* BODY */
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        
-        /* MOBILE CONTAINER */
-        .mobile-container {
-            width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        /* HEADER */
-        .mobile-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 25px;
-            border-radius: 20px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .mobile-title {
-            font-size: 28px;
-            font-weight: 900;
-            margin-bottom: 10px;
-        }
-        
-        .machine-id {
-            font-size: 16px;
-            opacity: 0.95;
-            font-weight: 600;
-        }
-        
-        /* STATUS BADGE */
-        .status-badge {
-            display: inline-block;
-            padding: 12px 25px;
-            border-radius: 50px;
-            font-size: 16px;
-            font-weight: 700;
-            margin: 15px 0;
-            text-transform: uppercase;
-        }
-        
-        .status-badge.idle { background: #10b981; color: white; }
-        .status-badge.product-selected { background: #f59e0b; color: white; }
-        .status-badge.waiting-payment { background: #3b82f6; color: white; }
-        .status-badge.payment-confirmed { background: #8b5cf6; color: white; }
-        .status-badge.dispensing { background: #ec4899; color: white; }
-        .status-badge.complete { background: #10b981; color: white; }
-        
-        /* SECTIONS */
-        .section {
-            background: #f8f9ff;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 2px solid #e0e7ff;
-        }
-        
-        .section-title {
-            font-size: 20px;
-            font-weight: 900;
-            color: #667eea;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        /* PRODUCTS */
-        .products-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-        }
-        
-        .product-card {
-            background: white;
-            border: 3px solid #e0e7ff;
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .product-card:hover {
-            transform: translateY(-5px);
-            border-color: #667eea;
-        }
-        
-        .product-card.selected {
-            border-color: #667eea;
-            background: linear-gradient(135deg, #f0f2ff 0%, #e0e7ff 100%);
-        }
-        
-        .product-card.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .product-icon {
-            font-size: 48px;
-            margin-bottom: 10px;
-        }
-        
-        .product-name {
-            font-size: 16px;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 8px;
-        }
-        
-        .product-price {
-            font-size: 18px;
-            font-weight: 900;
-            color: #667eea;
-        }
-        
-        /* MONEY */
-        .money-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-        }
-        
-        .money-btn {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 20px;
-            font-size: 20px;
-            font-weight: 900;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .money-btn:hover:not(:disabled) {
-            transform: translateY(-3px);
-        }
-        
-        .money-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        /* SUMMARY */
-        .summary-card {
-            background: linear-gradient(135deg, #f0f2ff 0%, #e0e7ff 100%);
-            border: 3px solid #c7d2fe;
-            border-radius: 15px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        
-        .summary-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            font-size: 18px;
-        }
-        
-        .summary-label {
-            font-weight: 600;
-            color: #6b7280;
-        }
-        
-        .summary-value {
-            font-weight: 900;
-            color: #667eea;
-            font-size: 22px;
-        }
-        
-        .summary-value.positive {
-            color: #10b981;
-        }
-        
-        .summary-value.negative {
-            color: #ef4444;
-        }
-        
-        /* BUTTONS */
-        .confirm-btn {
-            width: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 15px;
-            padding: 20px;
-            font-size: 22px;
-            font-weight: 900;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 20px;
-        }
-        
-        .confirm-btn:hover:not(:disabled) {
-            transform: translateY(-3px);
-        }
-        
-        .confirm-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        /* SUCCESS */
-        .success-message {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            border-radius: 15px;
-            padding: 30px;
-            text-align: center;
-            animation: slideIn 0.5s ease;
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .success-icon {
-            font-size: 80px;
-            margin-bottom: 15px;
-        }
-        
-        .success-text {
-            font-size: 24px;
-            font-weight: 900;
-            margin-bottom: 15px;
-        }
-        
-        .success-details {
-            font-size: 18px;
-            opacity: 0.95;
-        }
-        
-        .reset-btn {
-            background: white;
-            color: #667eea;
-            border: 3px solid white;
-            border-radius: 12px;
-            padding: 15px 30px;
-            font-size: 18px;
-            font-weight: 700;
-            cursor: pointer;
-            margin-top: 20px;
-            transition: all 0.3s ease;
-        }
-        
-        .reset-btn:hover {
-            background: rgba(255, 255, 255, 0.9);
-        }
-        
-        /* UTILITY */
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-        
-        /* RESPONSIVE */
-        @media (max-width: 480px) {
-            .products-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .money-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="mobile-container">
-        <header class="mobile-header">
-            <h1 class="mobile-title">📱 Mobile Payment</h1>
-            <div class="machine-id" id="machineIdDisplay">Machine: Loading...</div>
-            <div class="status-badge idle" id="statusBadge">🟢 Ready</div>
-        </header>
-        
-        <main id="mainContent">
-            <section class="section" id="productSection">
-                <h2 class="section-title"><span>🛒</span> <span>اختر المنتج</span></h2>
-                <div class="products-grid" id="productsGrid"></div>
-            </section>
-            
-            <section class="section" id="paymentSection">
-                <h2 class="section-title"><span>💵</span> <span>أدخل المبلغ</span></h2>
-                <div class="money-grid" id="moneyGrid"></div>
-                <div class="summary-card">
-                    <div class="summary-row">
-                        <span class="summary-label">السعر المطلوب:</span>
-                        <span class="summary-value" id="requiredAmount">0 ر.س</span>
-                    </div>
-                    <div class="summary-row">
-                        <span class="summary-label">المبلغ المدفوع:</span>
-                        <span class="summary-value" id="paidAmount">0 ر.س</span>
-                    </div>
-                    <div class="summary-row">
-                        <span class="summary-label">الباقي:</span>
-                        <span class="summary-value" id="changeAmount">0 ر.س</span>
-                    </div>
-                </div>
-                <button class="confirm-btn" id="confirmBtn" disabled>تأكيد الدفع</button>
-            </section>
-        </main>
-        
-        <div id="successMessage" class="hidden"></div>
-    </div>
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobile Payment - Vending Machine</title><!-- Firebase SDK -->
+  <script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getDatabase, ref, set, onValue, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
 
-    <script>
-        // ============================================
-        // 🏗️ ARCHITECTURE DOCUMENTATION
-        // ============================================
-        /*
-        ✅ STATE DESIGN PATTERN FOR MOBILE
-        ✅ EVENT-DRIVEN ARCHITECTURE
-        ✅ MODEL-VIEW SEPARATION
-        */
-        
-        // ============================================
-        // 1️⃣ STATE DESIGN PATTERN (MOBILE)
-        // ============================================
-        
-        class MobileState {
-            constructor(name) {
-                this.name = name;
-            }
-            
-            enter(context) {
-                console.log(`[MOBILE_STATE] Entering ${this.name}`);
-            }
-            
-            exit(context) {}
-            
-            handleEvent(event, context) {
-                console.log(`[MOBILE_STATE] ${this.name} handling ${event.type}`);
-            }
-        }
-        
-        class MobileIdleState extends MobileState {
-            constructor() {
-                super('MOBILE_IDLE');
-            }
-            
-            enter(context) {
-                super.enter(context);
-                context.view.showProductSelection();
-                context.view.disablePaymentSection();
-            }
-            
-            handleEvent(event, context) {
-                super.handleEvent(event, context);
-                if (event.type === 'PRODUCT_SELECTED') {
-                    context.sessionData.selectedProduct = event.data.product;
-                    context.transitionTo(new MobilePaymentState());
-                }
-            }
-        }
-        
-        class MobilePaymentState extends MobileState {
-            constructor() {
-                super('MOBILE_PAYMENT');
-            }
-            
-            enter(context) {
-                super.enter(context);
-                context.view.enablePaymentSection();
-                context.view.updatePaymentSummary(context.sessionData);
-            }
-            
-            handleEvent(event, context) {
-                super.handleEvent(event, context);
-                if (event.type === 'MONEY_ADDED') {
-                    context.sessionData.amountPaid += event.data.amount;
-                    context.sessionData.change = context.sessionData.amountPaid - 
-                        context.sessionData.selectedProduct.price;
-                    context.view.updatePaymentSummary(context.sessionData);
-                    
-                    if (context.sessionData.amountPaid >= context.sessionData.selectedProduct.price) {
-                        context.view.enableConfirmButton();
-                    }
-                } else if (event.type === 'PAYMENT_CONFIRMED') {
-                    context.transitionTo(new MobileWaitingState());
-                }
-            }
-        }
-        
-        class MobileWaitingState extends MobileState {
-            constructor() {
-                super('MOBILE_WAITING');
-            }
-            
-            enter(context) {
-                super.enter(context);
-                context.view.showProcessing();
-                context.sendToMachine();
-            }
-            
-            handleEvent(event, context) {
-                super.handleEvent(event, context);
-                if (event.type === 'TRANSACTION_COMPLETE') {
-                    context.transitionTo(new MobileCompleteState());
-                }
-            }
-        }
-        
-        class MobileCompleteState extends MobileState {
-            constructor() {
-                super('MOBILE_COMPLETE');
-            }
-            
-            enter(context) {
-                super.enter(context);
-                context.view.showSuccess(context.sessionData);
-            }
-            
-            handleEvent(event, context) {
-                super.handleEvent(event, context);
-                if (event.type === 'RESET') {
-                    context.resetSession();
-                    context.transitionTo(new MobileIdleState());
-                }
-            }
-        }
-        
-        // ============================================
-        // 2️⃣ EVENT-DRIVEN ARCHITECTURE (MOBILE)
-        // ============================================
-        
-        class MobileEventBus {
-            constructor() {
-                this.listeners = {};
-            }
-            
-            emit(eventType, data = {}) {
-                console.log(`[MOBILE_EVENT] ${eventType}`, data);
-                const event = { type: eventType, data, timestamp: Date.now() };
-                
-                if (this.listeners[eventType]) {
-                    this.listeners[eventType].forEach(callback => callback(event));
-                }
-            }
-            
-            on(eventType, callback) {
-                if (!this.listeners[eventType]) {
-                    this.listeners[eventType] = [];
-                }
-                this.listeners[eventType].push(callback);
-            }
-        }
-        
-        // ============================================
-        // 3️⃣ MODEL-VIEW SEPARATION (MOBILE)
-        // ============================================
-        
-        // MODEL (Pure Data)
-        class MobileModel {
-            constructor() {
-                this.products = [
-                    { id: 'P1', name: 'بيبسي', icon: '🥤', price: 5 },
-                    { id: 'P2', name: 'شيبس', icon: '🍟', price: 3 },
-                    { id: 'P3', name: 'شوكولاتة', icon: '🍫', price: 7 },
-                    { id: 'P4', name: 'ماء', icon: '💧', price: 2 },
-                    { id: 'P5', name: 'قهوة', icon: '☕', price: 10 },
-                    { id: 'P6', name: 'عصير', icon: '🧃', price: 6 }
-                ];
-                
-                this.moneyDenominations = [1, 5, 10, 20, 50, 100];
-                this.sessionData = {
-                    selectedProduct: null,
-                    amountPaid: 0,
-                    change: 0
-                };
-            }
-            
-            getProductById(id) {
-                return this.products.find(p => p.id === id);
-            }
-            
-            getAllProducts() {
-                return [...this.products];
-            }
-            
-            getMoneyDenominations() {
-                return [...this.moneyDenominations];
-            }
-            
-            addPayment(amount) {
-                this.sessionData.amountPaid += amount;
-                this.sessionData.change = this.sessionData.amountPaid - 
-                    (this.sessionData.selectedProduct ? this.sessionData.selectedProduct.price : 0);
-                return this.sessionData;
-            }
-            
-            selectProduct(product) {
-                this.sessionData.selectedProduct = product;
-                this.sessionData.amountPaid = 0;
-                this.sessionData.change = 0;
-                return this.sessionData;
-            }
-            
-            resetSession() {
-                this.sessionData = {
-                    selectedProduct: null,
-                    amountPaid: 0,
-                    change: 0
-                };
-                return this.sessionData;
-            }
-            
-            isPaymentComplete() {
-                if (!this.sessionData.selectedProduct) return false;
-                return this.sessionData.amountPaid >= this.sessionData.selectedProduct.price;
-            }
-            
-            getSessionData() {
-                return { ...this.sessionData };
-            }
-        }
-        
-        // VIEW (Display Only)
-        class MobileView {
-            constructor(model) {
-                this.model = model;
-                this.statusBadge = document.getElementById('statusBadge');
-                this.productsGrid = document.getElementById('productsGrid');
-                this.moneyGrid = document.getElementById('moneyGrid');
-                this.confirmBtn = document.getElementById('confirmBtn');
-                this.mainContent = document.getElementById('mainContent');
-                this.successMessage = document.getElementById('successMessage');
-            }
-            
-            update(sessionData) {
-                this.updatePaymentSummary(sessionData);
-                this.updateProductSelection(sessionData);
-                this.updateConfirmButton(sessionData);
-            }
-            
-            updatePaymentSummary(sessionData) {
-                document.getElementById('requiredAmount').textContent = 
-                    `${sessionData.selectedProduct?.price || 0} ر.س`;
-                document.getElementById('paidAmount').textContent = 
-                    `${sessionData.amountPaid} ر.س`;
-                
-                const changeElement = document.getElementById('changeAmount');
-                changeElement.textContent = `${sessionData.change} ر.س`;
-                changeElement.className = 'summary-value';
-                
-                if (sessionData.change > 0) {
-                    changeElement.classList.add('positive');
-                } else if (sessionData.change < 0) {
-                    changeElement.classList.add('negative');
-                }
-            }
-            
-            updateProductSelection(sessionData) {
-                document.querySelectorAll('.product-card').forEach(card => {
-                    card.classList.remove('selected');
-                    if (sessionData.selectedProduct && 
-                        card.dataset.productId === sessionData.selectedProduct.id) {
-                        card.classList.add('selected');
-                    }
-                });
-            }
-            
-            updateConfirmButton(sessionData) {
-                if (sessionData.selectedProduct && 
-                    sessionData.amountPaid >= sessionData.selectedProduct.price) {
-                    this.confirmBtn.disabled = false;
-                } else {
-                    this.confirmBtn.disabled = true;
-                }
-            }
-            
-            showProductSelection() {
-                this.mainContent.classList.remove('hidden');
-                this.successMessage.classList.add('hidden');
-                this.renderProducts();
-                this.renderMoneyButtons();
-            }
-            
-            renderProducts() {
-                const products = this.model.getAllProducts();
-                this.productsGrid.innerHTML = products.map(product => `
-                    <div class="product-card" data-product-id="${product.id}">
-                        <div class="product-icon">${product.icon}</div>
-                        <div class="product-name">${product.name}</div>
-                        <div class="product-price">${product.price} ر.س</div>
-                    </div>
-                `).join('');
-            }
-            
-            renderMoneyButtons() {
-                const denominations = this.model.getMoneyDenominations();
-                this.moneyGrid.innerHTML = denominations.map(amount => `
-                    <button class="money-btn" data-amount="${amount}" disabled>
-                        💵 ${amount} ر.س
-                    </button>
-                `).join('');
-            }
-            
-            disablePaymentSection() {
-                document.querySelectorAll('.money-btn').forEach(btn => btn.disabled = true);
-                this.confirmBtn.disabled = true;
-            }
-            
-            enablePaymentSection() {
-                document.querySelectorAll('.money-btn').forEach(btn => btn.disabled = false);
-            }
-            
-            enableConfirmButton() {
-                this.confirmBtn.disabled = false;
-            }
-            
-            showProcessing() {
-                this.confirmBtn.innerHTML = '<span class="loading"></span> جاري المعالجة...';
-                this.confirmBtn.disabled = true;
-                document.querySelectorAll('.product-card').forEach(card => card.classList.add('disabled'));
-                document.querySelectorAll('.money-btn').forEach(btn => btn.disabled = true);
-            }
-            
-            showSuccess(sessionData) {
-                this.mainContent.classList.add('hidden');
-                this.successMessage.classList.remove('hidden');
-                this.successMessage.innerHTML = `
-                    <div class="success-message">
-                        <div class="success-icon">✅</div>
-                        <div class="success-text">تم الدفع بنجاح!</div>
-                        <div class="success-details">
-                            <div style="font-size: 48px; margin: 20px 0;">
-                                ${sessionData.selectedProduct.icon}
-                            </div>
-                            <div style="font-size: 22px; font-weight: 700;">
-                                ${sessionData.selectedProduct.name}
-                            </div>
-                            <div style="font-size: 20px; margin-top: 15px;">
-                                السعر: ${sessionData.selectedProduct.price} ر.س
-                            </div>
-                            <div style="font-size: 20px; margin-top: 10px;">
-                                المدفوع: ${sessionData.amountPaid} ر.س
-                            </div>
-                            ${sessionData.change > 0 ? `
-                                <div style="font-size: 20px; margin-top: 10px;">
-                                    الباقي: ${sessionData.change} ر.س
-                                </div>
-                            ` : ''}
-                            <div style="font-size: 24px; margin-top: 25px; font-weight: 900;">
-                                🎁 اذهب لاستلام طلبك من الماكينة!
-                            </div>
-                        </div>
-                        <button class="reset-btn" id="resetBtn">🔄 طلب جديد</button>
-                    </div>
-                `;
-            }
-            
-            updateStatusBadge(state) {
-                const statusMap = {
-                    'IDLE': { text: '🟢 Ready', class: 'idle' },
-                    'PRODUCT_SELECTED': { text: '🟡 Product Selected', class: 'product-selected' },
-                    'WAITING_PAYMENT': { text: '🔵 Processing', class: 'waiting-payment' },
-                    'PAYMENT_CONFIRMED': { text: '🟣 Confirmed', class: 'payment-confirmed' },
-                    'DISPENSING': { text: '🔴 Dispensing', class: 'dispensing' },
-                    'COMPLETE': { text: '🟢 Complete', class: 'complete' }
-                };
-                
-                const status = statusMap[state] || statusMap['IDLE'];
-                this.statusBadge.textContent = status.text;
-                this.statusBadge.className = `status-badge ${status.class}`;
-            }
-        }
-        
-        // ============================================
-        // 4️⃣ MOBILE CONTEXT (State Machine)
-        // ============================================
-        
-        class MobileContext {
-            constructor(machineId) {
-                this.machineId = machineId;
-                this.model = new MobileModel();
-                this.view = new MobileView(this.model);
-                this.eventBus = new MobileEventBus();
-                this.currentState = null;
-                this.sessionData = this.model.getSessionData();
-                
-                this.registerEventHandlers();
-                this.registerUIHandlers();
-                this.transitionTo(new MobileIdleState());
-            }
-            
-            registerEventHandlers() {
-                const eventTypes = ['PRODUCT_SELECTED', 'MONEY_ADDED', 'PAYMENT_CONFIRMED', 
-                                   'TRANSACTION_COMPLETE', 'RESET'];
-                
-                eventTypes.forEach(eventType => {
-                    this.eventBus.on(eventType, (event) => {
-                        if (this.currentState) {
-                            this.currentState.handleEvent(event, this);
-                        }
-                    });
-                });
-            }
-            
-            registerUIHandlers() {
-                // Product selection
-                document.addEventListener('click', (e) => {
-                    const productCard = e.target.closest('.product-card');
-                    if (productCard && this.currentState.name === 'MOBILE_IDLE') {
-                        const productId = productCard.dataset.productId;
-                        const product = this.model.getProductById(productId);
-                        
-                        if (product) {
-                            const sessionData = this.model.selectProduct(product);
-                            this.view.update(sessionData);
-                            this.eventBus.emit('PRODUCT_SELECTED', { product });
-                            this.sendProductToFirebase(product);
-                        }
-                    }
-                });
-                
-                // Money buttons
-                document.addEventListener('click', (e) => {
-                    const moneyBtn = e.target.closest('.money-btn');
-                    if (moneyBtn && !moneyBtn.disabled) {
-                        const amount = parseInt(moneyBtn.dataset.amount);
-                        const sessionData = this.model.addPayment(amount);
-                        this.view.update(sessionData);
-                        this.eventBus.emit('MONEY_ADDED', { amount });
-                        this.updatePaymentInFirebase(sessionData.amountPaid);
-                    }
-                });
-                
-                // Confirm button
-                document.addEventListener('click', (e) => {
-                    if (e.target.id === 'confirmBtn' && !e.target.disabled) {
-                        this.eventBus.emit('PAYMENT_CONFIRMED', {});
-                        this.sendPaymentConfirmedToFirebase();
-                    }
-                });
-                
-                // Reset button
-                document.addEventListener('click', (e) => {
-                    if (e.target.id === 'resetBtn') {
-                        this.eventBus.emit('RESET', {});
-                    }
-                });
-            }
-            
-            transitionTo(newState) {
-                console.log(`[MOBILE_STATE] ${this.currentState?.name || 'null'} → ${newState.name}`);
-                
-                if (this.currentState) {
-                    this.currentState.exit(this);
-                }
-                
-                this.currentState = newState;
-                this.currentState.enter(this);
-            }
-            
-            sendProductToFirebase(product) {
-                if (!window.firebaseDatabase) return;
-                
-                const sessionRef = window.firebaseRef(window.firebaseDatabase, `sessions/${this.machineId}`);
-                window.firebaseSet(sessionRef, {
-                    state: 'PRODUCT_SELECTED',
-                    selectedProductId: product.id,
-                    selectedProductName: product.name,
-                    selectedProductIcon: product.icon,
-                    selectedProductPrice: product.price,
-                    amountPaid: 0,
-                    change: 0,
-                    timestamp: Date.now()
-                });
-            }
-            
-            updatePaymentInFirebase(amountPaid) {
-                if (!window.firebaseDatabase) return;
-                
-                const sessionRef = window.firebaseRef(window.firebaseDatabase, `sessions/${this.machineId}`);
-                window.firebaseSet(sessionRef, {
-                    state: 'WAITING_PAYMENT',
-                    amountPaid: amountPaid,
-                    timestamp: Date.now()
-                });
-            }
-            
-            sendPaymentConfirmedToFirebase() {
-                if (!window.firebaseDatabase) return;
-                
-                const sessionRef = window.firebaseRef(window.firebaseDatabase, `sessions/${this.machineId}`);
-                window.firebaseSet(sessionRef, {
-                    state: 'PAYMENT_CONFIRMED',
-                    timestamp: Date.now()
-                });
-            }
-            
-            sendToMachine() {
-                if (!window.firebaseDatabase) return;
-                
-                const sessionRef = window.firebaseRef(window.firebaseDatabase, `sessions/${this.machineId}`);
-                window.firebaseSet(sessionRef, {
-                    state: 'WAITING_PAYMENT',
-                    amountPaid: this.model.getSessionData().amountPaid,
-                    timestamp: Date.now()
-                });
-            }
-            
-            resetSession() {
-                this.model.resetSession();
-                this.view.showProductSelection();
-                
-                if (window.firebaseDatabase) {
-                    const sessionRef = window.firebaseRef(window.firebaseDatabase, `sessions/${this.machineId}`);
-                    window.firebaseSet(sessionRef, {
-                        state: 'IDLE',
-                        timestamp: Date.now()
-                    });
-                }
-            }
-        }
-        
-        // ============================================
-        // 5️⃣ FIREBASE INITIALIZATION
-        // ============================================
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyBzKF_fuEKbSP-8JuBZb9QkuMj9eGcBsYw",
-            authDomain: "advanced-vending-machine.firebaseapp.com",
-            databaseURL: "https://advanced-vending-machine-default-rtdb.firebaseio.com",
-            projectId: "advanced-vending-machine",
-            storageBucket: "advanced-vending-machine.firebasestorage.app",
-            messagingSenderId: "119768375164",
-            appId: "1:119768375164:web:d96d14021f495869474ef9"
-        };
-        
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        window.firebaseDatabase = firebase.database();
-        window.firebaseRef = (path) => firebase.database().ref(path);
-        window.firebaseSet = (ref, data) => ref.set(data);
-        window.firebaseOnValue = (ref, callback) => ref.on('value', callback);
-        
-        // ============================================
-        // 6️⃣ APPLICATION INITIALIZATION
-        // ============================================
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            // Get machine ID from URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const machineId = urlParams.get('machine') || 'VM-001';
-            
-            // Display machine ID
-            document.getElementById('machineIdDisplay').textContent = `Machine: ${machineId}`;
-            
-            // Create Mobile Context
-            const mobileContext = new MobileContext(machineId);
-            
-            // Listen to Firebase for machine state updates
-            const sessionRef = window.firebaseRef(window.firebaseDatabase, `sessions/${machineId}`);
-            window.firebaseOnValue(sessionRef, (snapshot) => {
-                const data = snapshot.val();
-                if (!data) return;
-                
-                mobileContext.view.updateStatusBadge(data.state);
-                
-                if (data.state === 'COMPLETE' && mobileContext.currentState.name === 'MOBILE_WAITING') {
-                    mobileContext.eventBus.emit('TRANSACTION_COMPLETE', {});
-                }
+const firebaseConfig = {
+  apiKey: "AIzaSyBzKF_fuEKbSP-8JuBZb9QkuMj9eGcBsYw",
+  authDomain: "advanced-vending-machine.firebaseapp.com",
+  databaseURL: "https://advanced-vending-machine-default-rtdb.firebaseio.com",
+  projectId: "advanced-vending-machine",
+  storageBucket: "advanced-vending-machine.firebasestorage.app",
+  messagingSenderId: "119768375164",
+  appId: "1:119768375164:web:d96d14021f495869474ef9",
+  measurementId: "G-9935V0NKQ1"
+};
+
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+
+window.mobileDatabase = database;
+window.mobileRef = ref;
+window.mobileSet = set;
+window.mobileOnValue = onValue;
+window.mobileGet = get;
+</script>
+  <style>
+body {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.mobile-container {
+  width: 100%;
+  min-height: 100vh;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+  border-radius: 20px;
+  border: 2px solid rgba(99, 102, 241, 0.3);
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+}
+
+.mobile-title {
+  font-size: 32px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #6366f1 0%, #ec4899 50%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 10px 0;
+  animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+.mobile-subtitle {
+  font-size: 16px;
+  color: #a5b4fc;
+  font-weight: 600;
+  margin: 0;
+}
+
+.state-indicator {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+  border: 2px solid #6366f1;
+  border-radius: 15px;
+  padding: 15px 20px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.state-badge {
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  animation: glow 2s ease-in-out infinite;
+}
+
+.state-badge.idle {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  box-shadow: 0 5px 20px rgba(99, 102, 241, 0.5);
+}
+
+.state-badge.selecting {
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+  color: white;
+  box-shadow: 0 5px 20px rgba(245, 158, 11, 0.5);
+}
+
+.state-badge.payment {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 5px 20px rgba(59, 130, 246, 0.5);
+}
+
+.state-badge.complete {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  box-shadow: 0 5px 20px rgba(34, 197, 94, 0.5);
+}
+
+@keyframes glow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.2); }
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.product-card {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 2px solid rgba(99, 102, 241, 0.3);
+  border-radius: 20px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  position: relative;
+  overflow: hidden;
+}
+
+.product-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.product-card:hover::before {
+  opacity: 1;
+}
+
+.product-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  border-color: #6366f1;
+  box-shadow: 0 15px 40px rgba(99, 102, 241, 0.4);
+}
+
+.product-card.selected {
+  border-color: #22c55e;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(16, 185, 129, 0.2) 100%);
+  box-shadow: 0 15px 40px rgba(34, 197, 94, 0.5);
+}
+
+.product-icon {
+  font-size: 48px;
+  margin-bottom: 10px;
+  display: block;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.product-name {
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.product-price {
+  font-size: 22px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.payment-section {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 2px solid rgba(99, 102, 241, 0.3);
+  border-radius: 20px;
+  padding: 25px;
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: #ffffff;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.payment-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.payment-btn {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+  border: 2px solid rgba(99, 102, 241, 0.4);
+  border-radius: 15px;
+  padding: 15px 10px;
+  font-size: 20px;
+  font-weight: 900;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.payment-btn:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.4) 0%, rgba(139, 92, 246, 0.4) 100%);
+  border-color: #6366f1;
+  transform: scale(1.05);
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+}
+
+.payment-btn:active {
+  transform: scale(0.95);
+}
+
+.payment-display {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%);
+  border: 2px solid rgba(99, 102, 241, 0.3);
+  border-radius: 15px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.payment-amount {
+  font-size: 48px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 5px;
+}
+
+.payment-label {
+  font-size: 14px;
+  color: #a5b4fc;
+  font-weight: 600;
+}
+
+.order-summary {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 2px solid rgba(99, 102, 241, 0.3);
+  border-radius: 20px;
+  padding: 25px;
+  margin-bottom: 20px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 2px solid rgba(99, 102, 241, 0.2);
+}
+
+.summary-row:last-child {
+  border-bottom: none;
+}
+
+.summary-label {
+  font-size: 16px;
+  color: #a5b4fc;
+  font-weight: 700;
+}
+
+.summary-value {
+  font-size: 18px;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.summary-value.highlight {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.action-btn {
+  width: 100%;
+  padding: 18px;
+  border: none;
+  border-radius: 15px;
+  font-size: 20px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.action-btn.primary {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.5);
+}
+
+.action-btn.primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(99, 102, 241, 0.6);
+}
+
+.action-btn.success {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  box-shadow: 0 10px 30px rgba(34, 197, 94, 0.5);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.action-btn.success:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(34, 197, 94, 0.6);
+}
+
+.action-btn.danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 10px 30px rgba(239, 68, 68, 0.5);
+}
+
+.action-btn.danger:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(239, 68, 68, 0.6);
+}
+
+.action-btn:active {
+  transform: scale(0.98);
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.success-message {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  padding: 25px;
+  border-radius: 20px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 900;
+  margin-bottom: 20px;
+  animation: bounce 1s ease-in-out infinite;
+  box-shadow: 0 15px 40px rgba(34, 197, 94, 0.5);
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.hidden {
+  display: none !important;
+}
+
+@media (max-width: 480px) {
+  .products-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-options {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .mobile-title {
+    font-size: 28px;
+  }
+
+  .product-icon {
+    font-size: 40px;
+  }
+}
+</style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body>
+  <div class="mobile-container">
+   <header class="mobile-header">
+    <h1 class="mobile-title">📱 Mobile Payment</h1>
+    <p class="mobile-subtitle">Vending Machine Payment System</p>
+   </header>
+   <div class="state-indicator">
+    <div class="state-badge idle" id="stateBadge">
+     🔵 IDLE
+    </div>
+   </div><!-- Product Selection Screen -->
+   <div id="productSelectionScreen">
+    <div class="section-title">
+     🛒 اختر المنتج
+    </div>
+    <div class="products-grid" id="productsGrid"><!-- Products will be loaded here -->
+    </div>
+   </div><!-- Payment Screen -->
+   <div id="paymentScreen" class="hidden">
+    <div class="order-summary">
+     <div class="section-title">
+      📋 ملخص الطلب
+     </div>
+     <div class="summary-row"><span class="summary-label">المنتج:</span> <span class="summary-value" id="selectedProductName">-</span>
+     </div>
+     <div class="summary-row"><span class="summary-label">السعر:</span> <span class="summary-value" id="selectedProductPrice">0.00 ر.س</span>
+     </div>
+    </div>
+    <div class="payment-section">
+     <div class="section-title">
+      💰 أدخل المبلغ
+     </div>
+     <div class="payment-display">
+      <div class="payment-amount" id="paymentAmount">
+       0.00
+      </div>
+      <div class="payment-label">
+       ريال سعودي
+      </div>
+     </div>
+     <div class="payment-options"><button class="payment-btn" onclick="addPayment(1)">1 ر.س</button> <button class="payment-btn" onclick="addPayment(5)">5 ر.س</button> <button class="payment-btn" onclick="addPayment(10)">10 ر.س</button> <button class="payment-btn" onclick="addPayment(20)">20 ر.س</button> <button class="payment-btn" onclick="addPayment(50)">50 ر.س</button> <button class="payment-btn" onclick="addPayment(100)">100 ر.س</button>
+     </div><button class="action-btn danger" onclick="resetPayment()">🔄 إعادة تعيين</button>
+    </div><button class="action-btn success" id="confirmPaymentBtn" onclick="confirmPayment()" disabled> ✅ تأكيد الدفع </button> <button class="action-btn primary" onclick="cancelOrder()">❌ إلغاء الطلب</button>
+   </div><!-- Success Screen -->
+   <div id="successScreen" class="hidden">
+    <div class="success-message">
+     ✅ تم الدفع بنجاح!
+    </div>
+    <div class="order-summary">
+     <div class="section-title">
+      📋 تفاصيل العملية
+     </div>
+     <div class="summary-row"><span class="summary-label">المنتج:</span> <span class="summary-value" id="finalProductName">-</span>
+     </div>
+     <div class="summary-row"><span class="summary-label">السعر:</span> <span class="summary-value" id="finalProductPrice">0.00 ر.س</span>
+     </div>
+     <div class="summary-row"><span class="summary-label">المدفوع:</span> <span class="summary-value highlight" id="finalAmountPaid">0.00 ر.س</span>
+     </div>
+     <div class="summary-row" id="changeRow"><span class="summary-label">الباقي:</span> <span class="summary-value highlight" id="finalChange">0.00 ر.س</span>
+     </div>
+    </div>
+    <div class="success-message" style="font-size: 20px; margin-top: 20px;">
+     📦 اذهب لاستلام طلبك من الماكينة!
+    </div>
+   </div>
+  </div>
+  <script>
+// ============================================================================
+// EVENT SYSTEM - Event-Driven Architecture (EDA)
+// ============================================================================
+class EventBus {
+  constructor() {
+    this.listeners = {};
+  }
+
+  subscribe(eventType, callback) {
+    if (!this.listeners[eventType]) {
+      this.listeners[eventType] = [];
+    }
+    this.listeners[eventType].push(callback);
+  }
+
+  publish(eventType, data) {
+    console.log(`[MOBILE EVENT] ${eventType}`, data);
+    if (this.listeners[eventType]) {
+      this.listeners[eventType].forEach(callback => callback(data));
+    }
+  }
+}
+
+const eventBus = new EventBus();
+
+// ============================================================================
+// EVENT TYPES
+// ============================================================================
+const Events = {
+  PRODUCT_SELECTED: 'PRODUCT_SELECTED',
+  PAYMENT_UPDATED: 'PAYMENT_UPDATED',
+  PAYMENT_CONFIRMED: 'PAYMENT_CONFIRMED',
+  ORDER_CANCELLED: 'ORDER_CANCELLED',
+  TRANSACTION_COMPLETE: 'TRANSACTION_COMPLETE'
+};
+
+// ============================================================================
+// STATE DESIGN PATTERN - Mobile States
+// ============================================================================
+class MobileState {
+  constructor(context) {
+    this.context = context;
+  }
+
+  enter() {
+    throw new Error('enter() must be implemented');
+  }
+
+  exit() {}
+
+  handleEvent(event, data) {
+    throw new Error('handleEvent() must be implemented');
+  }
+
+  getStateName() {
+    throw new Error('getStateName() must be implemented');
+  }
+}
+
+class SelectingProductState extends MobileState {
+  getStateName() {
+    return 'SELECTING_PRODUCT';
+  }
+
+  enter() {
+    console.log('[MOBILE STATE] Entered SELECTING_PRODUCT state');
+    this.context.view.showProductSelection();
+  }
+
+  handleEvent(event, data) {
+    if (event === Events.PRODUCT_SELECTED) {
+      this.context.transitionTo(new PaymentState(this.context), data);
+    }
+  }
+}
+
+class PaymentState extends MobileState {
+  getStateName() {
+    return 'PAYMENT';
+  }
+
+  enter(data) {
+    console.log('[MOBILE STATE] Entered PAYMENT state', data);
+    this.context.sessionData = { ...this.context.sessionData, ...data };
+    this.context.view.showPaymentScreen(this.context.sessionData);
+  }
+
+  handleEvent(event, data) {
+    if (event === Events.PAYMENT_CONFIRMED) {
+      this.context.transitionTo(new SuccessState(this.context), data);
+    } else if (event === Events.ORDER_CANCELLED) {
+      this.context.reset();
+    }
+  }
+}
+
+class SuccessState extends MobileState {
+  getStateName() {
+    return 'SUCCESS';
+  }
+
+  enter(data) {
+    console.log('[MOBILE STATE] Entered SUCCESS state', data);
+    this.context.sessionData = { ...this.context.sessionData, ...data };
+    this.context.view.showSuccessScreen(this.context.sessionData);
+  }
+
+  handleEvent(event, data) {
+    // Success is final state, waiting for machine to complete
+  }
+}
+
+// ============================================================================
+// MOBILE CONTEXT (MODEL)
+// ============================================================================
+class MobilePaymentContext {
+  constructor(machineId, view) {
+    this.machineId = machineId;
+    this.view = view;
+    this.currentState = null;
+    this.sessionData = {
+      selectedProductId: null,
+      selectedProductName: null,
+      selectedProductIcon: null,
+      selectedProductPrice: 0,
+      amountPaid: 0,
+      change: 0
+    };
+
+    // Subscribe to events
+    Object.values(Events).forEach(eventType => {
+      eventBus.subscribe(eventType, (data) => this.handleEvent(eventType, data));
+    });
+
+    // Start in selecting product state
+    this.transitionTo(new SelectingProductState(this));
+  }
+
+  transitionTo(newState, data = {}) {
+    if (this.currentState) {
+      this.currentState.exit();
+    }
+    this.currentState = newState;
+    this.currentState.enter(data);
+  }
+
+  handleEvent(event, data) {
+    if (this.currentState) {
+      this.currentState.handleEvent(event, data);
+    }
+  }
+
+  reset() {
+    this.sessionData = {
+      selectedProductId: null,
+      selectedProductName: null,
+      selectedProductIcon: null,
+      selectedProductPrice: 0,
+      amountPaid: 0,
+      change: 0
+    };
+    this.transitionTo(new SelectingProductState(this));
+  }
+
+  async updateFirebase(state, additionalData = {}) {
+    if (!window.mobileDatabase) return;
+
+    const sessionRef = window.mobileRef(window.mobileDatabase, `sessions/${this.machineId}`);
+    await window.mobileSet(sessionRef, {
+      state: state,
+      timestamp: Date.now(),
+      ...this.sessionData,
+      ...additionalData
+    });
+  }
+}
+
+// ============================================================================
+// VIEW LAYER - Mobile UI
+// ============================================================================
+class MobilePaymentView {
+  constructor() {
+    this.stateBadge = document.getElementById('stateBadge');
+    this.productSelectionScreen = document.getElementById('productSelectionScreen');
+    this.paymentScreen = document.getElementById('paymentScreen');
+    this.successScreen = document.getElementById('successScreen');
+    this.productsGrid = document.getElementById('productsGrid');
+  }
+
+  updateStateBadge(text, className) {
+    this.stateBadge.textContent = text;
+    this.stateBadge.className = `state-badge ${className}`;
+  }
+
+  showProductSelection() {
+    this.updateStateBadge('🛒 اختر المنتج', 'selecting');
+    this.productSelectionScreen.classList.remove('hidden');
+    this.paymentScreen.classList.add('hidden');
+    this.successScreen.classList.add('hidden');
+    this.loadProducts();
+  }
+
+  loadProducts() {
+    const products = [
+      { id: 'A1', name: 'كوكاكولا', icon: '🥤', price: 5 },
+      { id: 'A2', name: 'بيبسي', icon: '🥤', price: 5 },
+      { id: 'B1', name: 'شيبس', icon: '🍟', price: 3 },
+      { id: 'B2', name: 'شوكولاتة', icon: '🍫', price: 7 },
+      { id: 'C1', name: 'ماء', icon: '💧', price: 2 },
+      { id: 'C2', name: 'عصير', icon: '🧃', price: 6 }
+    ];
+
+    this.productsGrid.innerHTML = products.map(product => `
+      <div class="product-card" onclick="selectProduct('${product.id}', '${product.name}', '${product.icon}', ${product.price})">
+        <span class="product-icon">${product.icon}</span>
+        <div class="product-name">${product.name}</div>
+        <div class="product-price">${product.price}.00 ر.س</div>
+      </div>
+    `).join('');
+  }
+
+  showPaymentScreen(data) {
+    this.updateStateBadge('💳 الدفع', 'payment');
+    this.productSelectionScreen.classList.add('hidden');
+    this.paymentScreen.classList.remove('hidden');
+    this.successScreen.classList.add('hidden');
+
+    document.getElementById('selectedProductName').textContent = `${data.selectedProductIcon} ${data.selectedProductName}`;
+    document.getElementById('selectedProductPrice').textContent = `${data.selectedProductPrice}.00 ر.س`;
+    document.getElementById('paymentAmount').textContent = '0.00';
+    document.getElementById('confirmPaymentBtn').disabled = true;
+  }
+
+  showSuccessScreen(data) {
+    this.updateStateBadge('✅ تم بنجاح', 'complete');
+    this.productSelectionScreen.classList.add('hidden');
+    this.paymentScreen.classList.add('hidden');
+    this.successScreen.classList.remove('hidden');
+
+    document.getElementById('finalProductName').textContent = `${data.selectedProductIcon} ${data.selectedProductName}`;
+    document.getElementById('finalProductPrice').textContent = `${data.selectedProductPrice}.00 ر.س`;
+    document.getElementById('finalAmountPaid').textContent = `${data.amountPaid}.00 ر.س`;
+    
+    if (data.change > 0) {
+      document.getElementById('changeRow').classList.remove('hidden');
+      document.getElementById('finalChange').textContent = `${data.change}.00 ر.س`;
+    } else {
+      document.getElementById('changeRow').classList.add('hidden');
+    }
+  }
+}
+
+// ============================================================================
+// GLOBAL FUNCTIONS - User Interactions
+// ============================================================================
+let currentPaymentAmount = 0;
+let mobileContext = null;
+
+function selectProduct(id, name, icon, price) {
+  console.log('[USER ACTION] Product selected:', { id, name, icon, price });
+  
+  eventBus.publish(Events.PRODUCT_SELECTED, {
+    selectedProductId: id,
+    selectedProductName: name,
+    selectedProductIcon: icon,
+    selectedProductPrice: price
+  });
+
+  // Update Firebase
+  mobileContext.updateFirebase('PRODUCT_SELECTED', {
+    selectedProductId: id,
+    selectedProductName: name,
+    selectedProductIcon: icon,
+    selectedProductPrice: price
+  });
+}
+
+function addPayment(amount) {
+  currentPaymentAmount += amount;
+  document.getElementById('paymentAmount').textContent = currentPaymentAmount.toFixed(2);
+  
+  const productPrice = mobileContext.sessionData.selectedProductPrice;
+  const confirmBtn = document.getElementById('confirmPaymentBtn');
+  
+  if (currentPaymentAmount >= productPrice) {
+    confirmBtn.disabled = false;
+  }
+  
+  console.log('[USER ACTION] Payment updated:', currentPaymentAmount);
+}
+
+function resetPayment() {
+  currentPaymentAmount = 0;
+  document.getElementById('paymentAmount').textContent = '0.00';
+  document.getElementById('confirmPaymentBtn').disabled = true;
+  console.log('[USER ACTION] Payment reset');
+}
+
+async function confirmPayment() {
+  const productPrice = mobileContext.sessionData.selectedProductPrice;
+  const change = currentPaymentAmount - productPrice;
+  
+  console.log('[USER ACTION] Payment confirmed:', {
+    amountPaid: currentPaymentAmount,
+    change: change
+  });
+
+  // Update local state
+  eventBus.publish(Events.PAYMENT_CONFIRMED, {
+    amountPaid: currentPaymentAmount,
+    change: change
+  });
+
+  // Update Firebase - trigger machine state change
+  await mobileContext.updateFirebase('WAITING_PAYMENT', {
+    amountPaid: currentPaymentAmount,
+    change: change
+  });
+
+  // Simulate payment confirmation after 1 second
+  setTimeout(async () => {
+    await mobileContext.updateFirebase('PAYMENT_CONFIRMED', {
+      amountPaid: currentPaymentAmount,
+      change: change
+    });
+
+    // Simulate dispensing
+    setTimeout(async () => {
+      await mobileContext.updateFirebase('DISPENSING', {
+        amountPaid: currentPaymentAmount,
+        change: change
+      });
+
+      // Simulate change return or complete
+      setTimeout(async () => {
+        if (change > 0) {
+          await mobileContext.updateFirebase('RETURNING_CHANGE', {
+            amountPaid: currentPaymentAmount,
+            change: change
+          });
+
+          setTimeout(async () => {
+            await mobileContext.updateFirebase('COMPLETE', {
+              amountPaid: currentPaymentAmount,
+              change: change
             });
-            
-            console.log('[MOBILE] System Initialized Successfully');
-        });
-    </script>
-</body>
+          }, 2000);
+        } else {
+          await mobileContext.updateFirebase('COMPLETE', {
+            amountPaid: currentPaymentAmount,
+            change: change
+          });
+        }
+      }, 3000);
+    }, 2000);
+  }, 1000);
+}
+
+function cancelOrder() {
+  console.log('[USER ACTION] Order cancelled');
+  currentPaymentAmount = 0;
+  eventBus.publish(Events.ORDER_CANCELLED, {});
+  
+  // Reset Firebase
+  mobileContext.updateFirebase('IDLE', {
+    selectedProductId: null,
+    selectedProductName: null,
+    selectedProductIcon: null,
+    selectedProductPrice: 0,
+    amountPaid: 0,
+    change: 0
+  });
+}
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+window.addEventListener('load', () => {
+  // Get machine ID from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const MACHINE_ID = urlParams.get('machine') || 'VM-001';
+  
+  const view = new MobilePaymentView();
+  mobileContext = new MobilePaymentContext(MACHINE_ID, view);
+  
+  console.log('='.repeat(60));
+  console.log('MOBILE PAYMENT SYSTEM INITIALIZED');
+  console.log('='.repeat(60));
+  console.log('Machine ID:', MACHINE_ID);
+  console.log('State Machine: SELECTING_PRODUCT → PAYMENT → SUCCESS');
+  console.log('='.repeat(60));
+});
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a96560fe6315dab',t:'MTc2NDk2Njk5MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
