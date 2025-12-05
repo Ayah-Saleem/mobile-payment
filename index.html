@@ -1,386 +1,1004 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Vending Machine Display</title>
-
-  <!-- QR Code library (كما في كودك الأصلي) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-  <!-- Firebase Modular SDK -->
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Vending Machine - State Machine Implementation</title><!-- QR Code Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><!-- Firebase SDK -->
   <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getDatabase, ref, onValue, set } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
 
-    // Firebase config (مثل ما عندك للمشروع التعليمي)
-    const firebaseConfig = {
-      apiKey: "AIzaSyBzKF_fuEKbSP-8JuBZb9QkuMj9eGcBsYw",
-      authDomain: "advanced-vending-machine.firebaseapp.com",
-      databaseURL: "https://advanced-vending-machine-default-rtdb.firebaseio.com",
-      projectId: "advanced-vending-machine",
-      storageBucket: "advanced-vending-machine.firebasestorage.app",
-      messagingSenderId: "119768375164",
-      appId: "1:119768375164:web:d96d14021f495869474ef9"
-    };
+const firebaseConfig = {
+  apiKey: "AIzaSyBzKF_fuEKbSP-8JuBZb9QkuMj9eGcBsYw",
+  authDomain: "advanced-vending-machine.firebaseapp.com",
+  databaseURL: "https://advanced-vending-machine-default-rtdb.firebaseio.com",
+  projectId: "advanced-vending-machine",
+  storageBucket: "advanced-vending-machine.firebasestorage.app",
+  messagingSenderId: "119768375164",
+  appId: "1:119768375164:web:d96d14021f495869474ef9",
+  measurementId: "G-9935V0NKQ1"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const database = getDatabase(app);
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
 
-    // نعرض الـ database داخل window حتى تُستخدم في بقية السكربت
-    window.MACHINE_DB = database;
-    window.DB_ref = ref;
-    window.DB_onValue = onValue;
-    window.DB_set = set;
-  </script>
-
+window.machineDatabase = database;
+window.machineRef = ref;
+window.machineSet = set;
+window.machineOnValue = onValue;
+</script>
   <style>
-    /* (نسق بسيط - يمكنك استبداله بنسختك الأنيقة) */
-    body { font-family: 'Cairo', sans-serif; background: linear-gradient(135deg,#0a0e27,#1a1a3e); color: #fff; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; }
-    .machine-screen { width:90%; max-width:760px; background:linear-gradient(135deg,#1e1e3f,#2d2d5f); border-radius:20px; padding:24px; box-shadow:0 15px 40px rgba(0,0,0,.6); border:5px solid #6366f1; }
-    .machine-title { font-size:28px; font-weight:900; text-align:center; margin-bottom:12px; background:linear-gradient(90deg,#6366f1,#ec4899); -webkit-background-clip:text; color:transparent; }
-    .display-area { background:#0a0b14; padding:18px; border-radius:14px; min-height:320px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; }
-    .state-badge { padding:10px 18px; border-radius:24px; font-weight:800; }
-    .qr-code-container { width:180px; height:180px; background:#fff; border-radius:12px; padding:12px; display:flex; align-items:center; justify-content:center; }
-    .order-details { background: rgba(255,255,255,0.06); padding:14px; border-radius:12px; width:100%; max-width:420px; }
-    .pickup-message { background:linear-gradient(90deg,#22c55e,#16a34a); color:white; padding:12px; border-radius:12px; font-weight:800; text-align:center; }
-    .state-diagram { margin-top:18px; color:#c7d2fe; font-size:13px; opacity:0.9; text-align:center; }
-    .console-log { font-family: monospace; background: rgba(0,0,0,0.6); padding:8px; border-radius:8px; margin-top:12px; max-height:140px; overflow:auto; color:#10b981; }
-  </style>
-</head>
-<body>
+body {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.machine-screen {
+  width: 90%;
+  max-width: 600px;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-radius: 30px;
+  padding: 40px 30px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5),
+              0 0 100px rgba(99, 102, 241, 0.3),
+              inset 0 0 30px rgba(99, 102, 241, 0.1);
+  border: 3px solid rgba(99, 102, 241, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.machine-screen::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+  animation: rotate 20s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.machine-header {
+  text-align: center;
+  margin-bottom: 30px;
+  position: relative;
+  z-index: 1;
+}
+
+.machine-title {
+  font-size: 42px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #6366f1 0%, #ec4899 50%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+  text-shadow: 0 0 30px rgba(99, 102, 241, 0.5);
+  animation: pulse 3s ease-in-out infinite;
+  letter-spacing: 2px;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.02); }
+}
+
+.display-area {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%);
+  border-radius: 25px;
+  padding: 50px 30px;
+  min-height: 600px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(99, 102, 241, 0.2);
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 50px rgba(99, 102, 241, 0.2);
+}
+
+.display-area::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 70%),
+              repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(99, 102, 241, 0.03) 2px, rgba(99, 102, 241, 0.03) 4px);
+  pointer-events: none;
+  animation: scanline 8s linear infinite;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.state-badge {
+  padding: 10px 25px;
+  border-radius: 30px;
+  font-size: 15px;
+  font-weight: 900;
+  margin-bottom: 18px;
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.5);
+  animation: glow 2s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.state-badge.idle {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  box-shadow: 0 15px 40px rgba(99, 102, 241, 0.6), 0 0 60px rgba(99, 102, 241, 0.4);
+}
+
+.state-badge.waiting {
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+  color: white;
+  box-shadow: 0 15px 40px rgba(245, 158, 11, 0.6), 0 0 60px rgba(245, 158, 11, 0.4);
+}
+
+.state-badge.payment {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 15px 40px rgba(59, 130, 246, 0.6), 0 0 60px rgba(59, 130, 246, 0.4);
+}
+
+.state-badge.dispensing {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+  color: white;
+  box-shadow: 0 15px 40px rgba(139, 92, 246, 0.6), 0 0 60px rgba(139, 92, 246, 0.4);
+  animation: glow 1s ease-in-out infinite, shake 0.5s ease-in-out infinite;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.state-badge.change {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 15px 40px rgba(16, 185, 129, 0.6), 0 0 60px rgba(16, 185, 129, 0.4);
+}
+
+.state-badge.complete {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  box-shadow: 0 15px 40px rgba(34, 197, 94, 0.6), 0 0 60px rgba(34, 197, 94, 0.4);
+  animation: glow 0.8s ease-in-out infinite, bounce 1s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes glow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+}
+
+.qr-display {
+  text-align: center;
+  animation: fadeInUp 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.qr-title {
+  font-size: 22px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 15px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.qr-code-container {
+  width: 200px;
+  height: 200px;
+  background: white;
+  border-radius: 15px;
+  padding: 15px;
+  margin: 0 auto 20px;
+  box-shadow: 0 15px 30px rgba(99, 102, 241, 0.4), 0 0 0 5px rgba(99, 102, 241, 0.2);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.qr-code-container::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  background: linear-gradient(45deg, #6366f1, #ec4899, #6366f1);
+  border-radius: 35px;
+  z-index: -1;
+  opacity: 0;
+  animation: rotateBorder 3s linear infinite;
+}
+
+@keyframes rotateBorder {
+  0%, 100% {
+    opacity: 0;
+    transform: rotate(0deg);
+  }
+  50% {
+    opacity: 0.5;
+    transform: rotate(180deg);
+  }
+}
+
+#qrcode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#qrcode img {
+  display: block;
+  margin: 0 auto;
+  border-radius: 15px;
+}
+
+.qr-instruction {
+  font-size: 16px;
+  color: #ffffff;
+  margin-bottom: 6px;
+  font-weight: 800;
+  text-shadow: 0 0 15px rgba(99, 102, 241, 0.6);
+}
+
+.qr-subtext {
+  font-size: 13px;
+  color: #a5b4fc;
+  font-weight: 600;
+}
+
+.order-details {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+  border: 3px solid #6366f1;
+  border-radius: 20px;
+  padding: 25px;
+  margin-top: 20px;
+  max-width: 400px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 15px 35px rgba(99, 102, 241, 0.3);
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.order-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 2px solid rgba(99, 102, 241, 0.3);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.order-item:last-child {
+  border-bottom: none;
+}
+
+.order-label {
+  color: #a5b4fc;
+  font-weight: 700;
+}
+
+.order-value {
+  font-weight: 900;
+  font-size: 18px;
+  text-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+}
+
+.pickup-message {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 20px;
+  margin-top: 20px;
+  font-size: 20px;
+  font-weight: 900;
+  text-align: center;
+  animation: pulse 1.5s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 15px 35px rgba(34, 197, 94, 0.5), 0 0 40px rgba(34, 197, 94, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+  .machine-screen {
+    width: 95%;
+    padding: 30px 20px;
+  }
+
+  .machine-title {
+    font-size: 36px;
+  }
+
+  .display-area {
+    padding: 40px 25px;
+    min-height: 500px;
+  }
+
+  .qr-code-container {
+    width: 280px;
+    height: 280px;
+  }
+
+  .state-badge {
+    font-size: 18px;
+    padding: 15px 35px;
+  }
+
+  .qr-title {
+    font-size: 28px;
+  }
+
+  .order-details {
+    padding: 25px;
+  }
+}
+</style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body>
   <div class="machine-screen">
-    <div class="machine-title">🤖 VENDING MACHINE - شاشة الماكينة</div>
-    <div id="displayArea" class="display-area">
-      <!-- يتم بناء المحتوى بواسطة JS -->
-      <div class="state-badge" id="initialBadge">🔵 جاري التهيئة...</div>
+   <header class="machine-header">
+    <h1 class="machine-title">🤖 VENDING MACHINE</h1>
+   </header>
+   <main class="display-area" id="displayArea">
+    <div class="qr-display">
+     <div class="state-badge idle">
+      🔵 IDLE - جاهز للاستخدام
+     </div>
+     <div class="qr-title">
+      ⚡ امسح الكود للدفع ⚡
+     </div>
+     <div class="qr-code-container">
+      <div id="qrcode"></div>
+     </div>
+     <div class="qr-instruction">
+      📱 امسح الكود بهاتفك للبدء
+     </div>
+     <div class="qr-subtext">
+      Scan QR code to start payment
+     </div>
     </div>
-
-    <div class="state-diagram">حالة النظام ستتحول هنا تلقائياً عند المسح والدفع.</div>
-    <div class="console-log" id="consoleLogs"><div>[SYSTEM] جاهز للبدء</div></div>
+   </main>
   </div>
+  <script>
+// ============================================================================
+// FORMAL FINITE AUTOMATON DEFINITION
+// ============================================================================
+// M = (Q, Σ, δ, q0, F)
+// Q = {IDLE, PRODUCT_SELECTED, WAITING_PAYMENT, PAYMENT_CONFIRMED, DISPENSING, RETURNING_CHANGE, COMPLETE}
+// Σ = {QR_SCANNED, PRODUCT_SELECTED, PAYMENT_RECEIVED, PAYMENT_CONFIRMED, DISPENSE_COMPLETE, CHANGE_RETURNED, TRANSACTION_COMPLETE, RESET}
+// q0 = IDLE
+// F = {COMPLETE}
+// δ = Transition function (implemented in State classes below)
+// ============================================================================
 
-  <script type="module">
-    // ---------- ثوابت الحالة (موحّدة مع الموبايل) ----------
-    const STATES = {
-      IDLE: 'IDLE',
-      PRODUCT_SELECTED: 'PRODUCT_SELECTED',
-      WAITING_PAYMENT: 'WAITING_PAYMENT',
-      PAYMENT_CONFIRMED: 'PAYMENT_CONFIRMED',
-      DISPENSING: 'DISPENSING',
-      RETURNING_CHANGE: 'RETURNING_CHANGE',
-      COMPLETE: 'COMPLETE'
+// ============================================================================
+// EVENT SYSTEM - Event-Driven Architecture (EDA)
+// ============================================================================
+class EventBus {
+  constructor() {
+    this.listeners = {};
+  }
+
+  subscribe(eventType, callback) {
+    if (!this.listeners[eventType]) {
+      this.listeners[eventType] = [];
+    }
+    this.listeners[eventType].push(callback);
+  }
+
+  publish(eventType, data) {
+    console.log(`[EVENT] ${eventType}`, data);
+    if (this.listeners[eventType]) {
+      this.listeners[eventType].forEach(callback => callback(data));
+    }
+  }
+}
+
+// Global Event Bus Instance
+const eventBus = new EventBus();
+
+// ============================================================================
+// EVENT TYPES - Input Alphabet (Σ)
+// ============================================================================
+const Events = {
+  QR_SCANNED: 'QR_SCANNED',
+  PRODUCT_SELECTED: 'PRODUCT_SELECTED',
+  PAYMENT_RECEIVED: 'PAYMENT_RECEIVED',
+  PAYMENT_CONFIRMED: 'PAYMENT_CONFIRMED',
+  DISPENSE_COMPLETE: 'DISPENSE_COMPLETE',
+  CHANGE_RETURNED: 'CHANGE_RETURNED',
+  TRANSACTION_COMPLETE: 'TRANSACTION_COMPLETE',
+  RESET: 'RESET'
+};
+
+// ============================================================================
+// STATE DESIGN PATTERN - Base State Interface
+// ============================================================================
+class State {
+  constructor(context) {
+    this.context = context;
+  }
+
+  // Abstract methods to be implemented by concrete states
+  enter() {
+    throw new Error('enter() must be implemented');
+  }
+
+  exit() {}
+
+  handleEvent(event, data) {
+    throw new Error('handleEvent() must be implemented');
+  }
+
+  getStateName() {
+    throw new Error('getStateName() must be implemented');
+  }
+
+  getBadgeClass() {
+    return 'idle';
+  }
+
+  getBadgeText() {
+    return '🔵 IDLE';
+  }
+}
+
+// ============================================================================
+// CONCRETE STATE CLASSES - Implementation of δ (Transition Function)
+// ============================================================================
+
+class IdleState extends State {
+  getStateName() {
+    return 'IDLE';
+  }
+
+  getBadgeClass() {
+    return 'idle';
+  }
+
+  getBadgeText() {
+    return '🔵 IDLE - جاهز للاستخدام';
+  }
+
+  enter() {
+    console.log('[STATE] Entered IDLE state');
+    this.context.view.showIdleScreen();
+  }
+
+  handleEvent(event, data) {
+    if (event === Events.PRODUCT_SELECTED) {
+      this.context.transitionTo(new ProductSelectedState(this.context), data);
+    }
+  }
+}
+
+class ProductSelectedState extends State {
+  getStateName() {
+    return 'PRODUCT_SELECTED';
+  }
+
+  getBadgeClass() {
+    return 'waiting';
+  }
+
+  getBadgeText() {
+    return '⏳ WAITING FOR ITEM...';
+  }
+
+  enter(data) {
+    console.log('[STATE] Entered PRODUCT_SELECTED state', data);
+    this.context.sessionData = { ...this.context.sessionData, ...data };
+    this.context.view.showProductSelected(this.context.sessionData);
+  }
+
+  handleEvent(event, data) {
+    if (event === Events.PAYMENT_RECEIVED) {
+      this.context.transitionTo(new WaitingPaymentState(this.context), data);
+    }
+  }
+}
+
+class WaitingPaymentState extends State {
+  getStateName() {
+    return 'WAITING_PAYMENT';
+  }
+
+  getBadgeClass() {
+    return 'payment';
+  }
+
+  getBadgeText() {
+    return '💳 WAITING FOR PAYMENT...';
+  }
+
+  enter(data) {
+    console.log('[STATE] Entered WAITING_PAYMENT state', data);
+    this.context.sessionData = { ...this.context.sessionData, ...data };
+    this.context.view.showWaitingPayment(this.context.sessionData);
+  }
+
+  handleEvent(event, data) {
+    if (event === Events.PAYMENT_CONFIRMED) {
+      this.context.transitionTo(new PaymentConfirmedState(this.context), data);
+    }
+  }
+}
+
+class PaymentConfirmedState extends State {
+  getStateName() {
+    return 'PAYMENT_CONFIRMED';
+  }
+
+  getBadgeClass() {
+    return 'payment';
+  }
+
+  getBadgeText() {
+    return '✅ PAYMENT CONFIRMED';
+  }
+
+  enter(data) {
+    console.log('[STATE] Entered PAYMENT_CONFIRMED state', data);
+    this.context.sessionData = { ...this.context.sessionData, ...data };
+    this.context.view.showPaymentConfirmed(this.context.sessionData);
+  }
+
+  handleEvent(event, data) {
+    if (event === Events.DISPENSE_COMPLETE) {
+      this.context.transitionTo(new DispensingState(this.context), data);
+    }
+  }
+}
+
+class DispensingState extends State {
+  getStateName() {
+    return 'DISPENSING';
+  }
+
+  getBadgeClass() {
+    return 'dispensing';
+  }
+
+  getBadgeText() {
+    return '⚙️ DISPENSING...';
+  }
+
+  enter(data) {
+    console.log('[STATE] Entered DISPENSING state', data);
+    this.context.sessionData = { ...this.context.sessionData, ...data };
+    this.context.view.showDispensing(this.context.sessionData);
+  }
+
+  handleEvent(event, data) {
+    if (event === Events.CHANGE_RETURNED) {
+      this.context.transitionTo(new ReturningChangeState(this.context), data);
+    } else if (event === Events.TRANSACTION_COMPLETE) {
+      this.context.transitionTo(new CompleteState(this.context), data);
+    }
+  }
+}
+
+class ReturningChangeState extends State {
+  getStateName() {
+    return 'RETURNING_CHANGE';
+  }
+
+  getBadgeClass() {
+    return 'change';
+  }
+
+  getBadgeText() {
+    return '💰 RETURNING CHANGE...';
+  }
+
+  enter(data) {
+    console.log('[STATE] Entered RETURNING_CHANGE state', data);
+    this.context.sessionData = { ...this.context.sessionData, ...data };
+    this.context.view.showReturningChange(this.context.sessionData);
+  }
+
+  handleEvent(event, data) {
+    if (event === Events.TRANSACTION_COMPLETE) {
+      this.context.transitionTo(new CompleteState(this.context), data);
+    }
+  }
+}
+
+class CompleteState extends State {
+  getStateName() {
+    return 'COMPLETE';
+  }
+
+  getBadgeClass() {
+    return 'complete';
+  }
+
+  getBadgeText() {
+    return '✅ COMPLETE';
+  }
+
+  enter(data) {
+    console.log('[STATE] Entered COMPLETE state', data);
+    this.context.sessionData = { ...this.context.sessionData, ...data };
+    this.context.view.showComplete(this.context.sessionData);
+  }
+
+  handleEvent(event, data) {
+    if (event === Events.RESET) {
+      this.context.reset();
+    }
+  }
+}
+
+// ============================================================================
+// STATE MACHINE CONTEXT (MODEL) - Pure Logic, No UI
+// ============================================================================
+class VendingMachineContext {
+  constructor(machineId, view) {
+    this.machineId = machineId;
+    this.view = view;
+    this.currentState = null;
+    this.sessionData = {
+      selectedProductId: null,
+      selectedProductName: null,
+      selectedProductIcon: null,
+      selectedProductPrice: 0,
+      amountPaid: 0,
+      change: 0
     };
-
-    // عنوان صفحة الموبايل (غيري إذا استضفتِها بمكان آخر)
-    const MOBILE_APP_URL = 'https://ayah-saleem.github.io/mobile-payment/mobile.html';
-
-    // MACHINE ID ثابت أو يمكن تغييره
-    const MACHINE_ID = 'VM-001';
-
-    // Helper: يسجل في اللوحة النصية الصغيرة
-    function logToConsole(message) {
-      const el = document.getElementById('consoleLogs');
-      const d = document.createElement('div');
-      d.textContent = message;
-      el.appendChild(d);
-      if (el.children.length > 30) el.removeChild(el.firstChild);
-      el.scrollTop = el.scrollHeight;
-    }
-
-    // --------- EventBus بسيط ----------
-    class EventBus {
-      constructor() { this.listeners = {}; }
-      subscribe(eventType, cb) {
-        (this.listeners[eventType] = this.listeners[eventType]||[]).push(cb);
-      }
-      publish(eventType, data) {
-        logToConsole(`[EVENT] ${eventType}`);
-        if (this.listeners[eventType]) this.listeners[eventType].forEach(cb => cb(data));
-      }
-    }
-
-    const Events = {
-      PRODUCT_SELECTED: 'PRODUCT_SELECTED',
-      PAYMENT_RECEIVED: 'PAYMENT_RECEIVED',
-      PAYMENT_CONFIRMED: 'PAYMENT_CONFIRMED',
-      DISPENSING_STARTED: 'DISPENSING_STARTED',
-      DISPENSING_COMPLETE: 'DISPENSING_COMPLETE',
-      CHANGE_RETURNED: 'CHANGE_RETURNED',
-      TRANSACTION_COMPLETE: 'TRANSACTION_COMPLETE',
-      RESET_TO_IDLE: 'RESET_TO_IDLE',
-      QR_SCANNED: 'QR_SCANNED'
-    };
-
-    // --------- State Pattern (مبسّط وفعال) ----------
-    class BaseState {
-      constructor(ctx) { this.ctx = ctx; }
-      enter() { logToConsole(`[STATE] Enter ${this.constructor.name}`); }
-      exit() { logToConsole(`[STATE] Exit ${this.constructor.name}`); }
-      handleEvent(evt, data) { /* للكتابة عند الحاجة */ }
-      getName() { return this.constructor.name.replace('State','').toUpperCase(); }
-    }
-
-    class IdleState extends BaseState {
-      enter() {
-        super.enter();
-        this.ctx.session = { state: STATES.IDLE, selectedProduct: null, amountPaid:0, change:0 };
-        this.ctx.view.render(this.ctx.session);
-      }
-      handleEvent(evt,data) {
-        if (evt === Events.QR_SCANNED) {
-          // مسح QR: انتقالي إلى waiting selection
-          this.ctx.transitionTo(new WaitingForSelectionState(this.ctx));
-        } else if (evt === Events.PRODUCT_SELECTED) {
-          this.ctx.session.selectedProduct = data;
-          this.ctx.transitionTo(new ProductSelectedState(this.ctx));
-        }
-      }
-    }
-
-    class WaitingForSelectionState extends BaseState {
-      enter() { super.enter(); this.ctx.session.state = STATES.PRODUCT_SELECTED; this.ctx.view.render(this.ctx.session); }
-      handleEvent(evt,data) {
-        if (evt === Events.PRODUCT_SELECTED) {
-          this.ctx.session.selectedProduct = data;
-          this.ctx.transitionTo(new ProductSelectedState(this.ctx));
-        }
-      }
-    }
-
-    class ProductSelectedState extends BaseState {
-      enter() { super.enter(); this.ctx.session.state = STATES.PRODUCT_SELECTED; this.ctx.session.amountPaid=0; this.ctx.view.render(this.ctx.session); }
-      handleEvent(evt,data) {
-        if (evt === Events.PAYMENT_RECEIVED) {
-          this.ctx.session.amountPaid += data.amount;
-          this.ctx.session.change = this.ctx.session.amountPaid - this.ctx.session.selectedProduct.price;
-          this.ctx.transitionTo(new WaitingPaymentState(this.ctx));
-        }
-      }
-    }
-
-    class WaitingPaymentState extends BaseState {
-      enter() { super.enter(); this.ctx.session.state = STATES.WAITING_PAYMENT; this.ctx.view.render(this.ctx.session); }
-      handleEvent(evt,data) {
-        if (evt === Events.PAYMENT_RECEIVED) {
-          this.ctx.session.amountPaid += data.amount;
-          this.ctx.session.change = this.ctx.session.amountPaid - this.ctx.session.selectedProduct.price;
-          this.ctx.view.render(this.ctx.session);
-        } else if (evt === Events.PAYMENT_CONFIRMED) {
-          this.ctx.session.change = this.ctx.session.amountPaid - this.ctx.session.selectedProduct.price;
-          this.ctx.transitionTo(new PaymentConfirmedState(this.ctx));
-        }
-      }
-    }
-
-    class PaymentConfirmedState extends BaseState {
-      enter() {
-        super.enter();
-        this.ctx.session.state = STATES.PAYMENT_CONFIRMED;
-        this.ctx.view.render(this.ctx.session);
-        setTimeout(()=> this.ctx.eventBus.publish(Events.DISPENSING_STARTED, {}), 800);
-      }
-      handleEvent(evt,data) {
-        if (evt === Events.DISPENSING_STARTED) this.ctx.transitionTo(new DispensingState(this.ctx));
-      }
-    }
-
-    class DispensingState extends BaseState {
-      enter() {
-        super.enter();
-        this.ctx.session.state = STATES.DISPENSING;
-        this.ctx.view.render(this.ctx.session);
-        setTimeout(()=> this.ctx.eventBus.publish(Events.DISPENSING_COMPLETE, {}), 3000);
-      }
-      handleEvent(evt,data) {
-        if (evt === Events.DISPENSING_COMPLETE) {
-          if (this.ctx.session.change > 0) this.ctx.transitionTo(new ReturningChangeState(this.ctx));
-          else this.ctx.transitionTo(new CompleteState(this.ctx));
-        }
-      }
-    }
-
-    class ReturningChangeState extends BaseState {
-      enter() {
-        super.enter();
-        this.ctx.session.state = STATES.RETURNING_CHANGE;
-        this.ctx.view.render(this.ctx.session);
-        setTimeout(()=> this.ctx.eventBus.publish(Events.CHANGE_RETURNED, {}), 1600);
-      }
-      handleEvent(evt,data) {
-        if (evt === Events.CHANGE_RETURNED) this.ctx.transitionTo(new CompleteState(this.ctx));
-      }
-    }
-
-    class CompleteState extends BaseState {
-      enter() {
-        super.enter();
-        this.ctx.session.state = STATES.COMPLETE;
-        this.ctx.view.render(this.ctx.session);
-        setTimeout(()=> this.ctx.eventBus.publish(Events.RESET_TO_IDLE, {}), 4500);
-      }
-      handleEvent(evt,data) {
-        if (evt === Events.RESET_TO_IDLE) this.ctx.transitionTo(new IdleState(this.ctx));
-      }
-    }
-
-    // --------- View (عرض فقط) ----------
-    class VendingMachineView {
-      constructor(container) { this.container = container; this.qrGenerated=false; }
-      render(session) {
-        const state = session.state || STATES.IDLE;
-        let html = '';
-
-        if (state === STATES.IDLE) {
-          html = `
-            <div class="state-badge" style="background:linear-gradient(90deg,#6366f1,#8b5cf6);">🔵 جاهز للاستخدام</div>
-            <div class="qr-title">⚡ امسح الكود للبدء ⚡</div>
-            <div class="qr-code-container"><div id="qrcode"></div></div>
-            <div style="opacity:0.9;">📱 امسح الكود بهاتفك للبدء</div>
-          `;
-          this.container.innerHTML = html;
-          if (!this.qrGenerated) this.generateQRCode();
-        } else {
-          // حالات أخرى تعرض تفاصيل الطلب و الحالة
-          const product = session.selectedProduct || { name:'-', price:0, icon:'' };
-          html = `
-            <div class="state-badge" style="background:linear-gradient(90deg,#f59e0b,#f97316);">${state}</div>
-            <div class="order-details">
-              <div>المنتج: ${product.icon} ${product.name}</div>
-              <div>السعر: ${product.price} ر.س</div>
-              <div>المدفوع: ${session.amountPaid || 0} ر.س</div>
-              ${session.change>0? `<div>الباقي: ${session.change} ر.س</div>`:''}
-            </div>
-            ${state === STATES.COMPLETE ? `<div class="pickup-message">📦 استلم طلبك من الماكينة</div>` : ''}
-          `;
-          this.container.innerHTML = html;
-        }
-      }
-
-      generateQRCode() {
-        const container = document.getElementById('qrcode');
-        if (!container) return;
-        const mobileUrl = `${MOBILE_APP_URL}?machine=${MACHINE_ID}`;
-        container.innerHTML = '';
-        // استخدم مكتبة QRCodeJS (زي كودك الأصلي)
-        new QRCode(container, {
-          text: mobileUrl,
-          width: 170,
-          height: 170,
-          colorDark: "#000000",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.H
-        });
-        this.qrGenerated = true;
-        logToConsole(`[QR] مولد: ${mobileUrl}`);
-      }
-    }
-
-    // --------- Model + Context (يجمع كل شيء ويفسّر الـ Firebase) ----------
-    class VendingMachineContext {
-      constructor(machineId) {
-        this.machineId = machineId;
-        this.eventBus = new EventBus();
-        this.view = new VendingMachineView(document.getElementById('displayArea'));
-        this.session = {};
-        this.currentState = null;
-
-        // EventBus to local state
-        Object.values(Events).forEach(e => {
-          this.eventBus.subscribe(e, (data)=> {
-            if (this.currentState && typeof this.currentState.handleEvent === 'function') {
-              this.currentState.handleEvent(e,data);
-            }
-          });
-        });
-
-        // Listen to firebase updates
-        this.setupFirebaseListener();
-
-        // start
-        this.transitionTo(new IdleState(this));
-      }
-
-      transitionTo(newState) {
-        logToConsole(`[TRANSITION] ${this.currentState ? this.currentState.getName() : 'null'} → ${newState.getName()}`);
-        if (this.currentState) this.currentState.exit();
-        this.currentState = newState;
-        this.currentState.enter();
-        // update firebase snapshot on transition
-        this.pushSessionToFirebase();
-      }
-
-      pushSessionToFirebase() {
-        if (!window.MACHINE_DB) return;
-        const sessionRef = window.DB_ref(window.MACHINE_DB, `sessions/${this.machineId}`);
-        const payload = {
-          state: this.session.state || STATES.IDLE,
-          selectedProductId: this.session.selectedProduct?.id || null,
-          selectedProductName: this.session.selectedProduct?.name || null,
-          selectedProductIcon: this.session.selectedProduct?.icon || null,
-          selectedProductPrice: this.session.selectedProduct?.price || 0,
-          amountPaid: this.session.amountPaid || 0,
-          change: this.session.change || 0,
-          timestamp: Date.now()
-        };
-        window.DB_set(sessionRef, payload).catch(err => logToConsole(`[FIREBASE ERR] ${err.message}`));
-      }
-
-      setupFirebaseListener() {
-        if (!window.MACHINE_DB) return;
-        const sessionRef = window.DB_ref(window.MACHINE_DB, `sessions/${this.machineId}`);
-        window.DB_onValue(sessionRef, (snap) => {
-          const data = snap.val();
-          if (!data) return;
-          // map incoming firebase state to local events
-          // عندما يكتب الموبايل حالات، نحولها إلى Events محلياً
-          logToConsole(`[FIREBASE] استلمنا state=${data.state}`);
-          switch (data.state) {
-            case STATES.PRODUCT_SELECTED:
-              if (data.selectedProductId) {
-                this.eventBus.publish(Events.PRODUCT_SELECTED, {
-                  id: data.selectedProductId,
-                  name: data.selectedProductName,
-                  icon: data.selectedProductIcon,
-                  price: data.selectedProductPrice
-                });
-              }
-              break;
-            case STATES.WAITING_PAYMENT:
-              if (typeof data.amountPaid === 'number') {
-                this.eventBus.publish(Events.PAYMENT_RECEIVED, { amount: data.amountPaid });
-              }
-              break;
-            case STATES.PAYMENT_CONFIRMED:
-              this.eventBus.publish(Events.PAYMENT_CONFIRMED, {});
-              break;
-            case STATES.COMPLETE:
-              this.eventBus.publish(Events.TRANSACTION_COMPLETE, {});
-              break;
-            case STATES.IDLE:
-              this.eventBus.publish(Events.RESET_TO_IDLE, {});
-              break;
-            default:
-              // other states can be ignored or handled
-              break;
-          }
-        });
-      }
-    }
-
-    // ---------- تهيئة التطبيق ----------
-    document.addEventListener('DOMContentLoaded', ()=> {
-      const ctx = new VendingMachineContext(MACHINE_ID);
-
-      // Event: when QR is scanned (mobile writes to firebase), machine will detect via firebase listener.
-      // لكن لو أردتي محاكاة محلياً: اضغطي هنا لمحاكاة QR:
-      const disp = document.getElementById('displayArea');
-      disp.addEventListener('dblclick', ()=> {
-        ctx.eventBus.publish(Events.QR_SCANNED, {});
-      });
-
-      logToConsole('[SYSTEM] شاشة الماكينة مُشغّلة');
+    
+    // Subscribe to all events
+    Object.values(Events).forEach(eventType => {
+      eventBus.subscribe(eventType, (data) => this.handleEvent(eventType, data));
     });
-  </script>
-</body>
+    
+    // Start in IDLE state
+    this.transitionTo(new IdleState(this));
+  }
+
+  transitionTo(newState, data = {}) {
+    if (this.currentState) {
+      this.currentState.exit();
+    }
+    this.currentState = newState;
+    this.currentState.enter(data);
+  }
+
+  handleEvent(event, data) {
+    if (this.currentState) {
+      this.currentState.handleEvent(event, data);
+    }
+  }
+
+  reset() {
+    this.sessionData = {
+      selectedProductId: null,
+      selectedProductName: null,
+      selectedProductIcon: null,
+      selectedProductPrice: 0,
+      amountPaid: 0,
+      change: 0
+    };
+    this.transitionTo(new IdleState(this));
+  }
+}
+
+// ============================================================================
+// VIEW LAYER - Separation of Concerns (Model-View)
+// ============================================================================
+class VendingMachineView {
+  constructor() {
+    this.displayArea = document.getElementById('displayArea');
+  }
+
+  showIdleScreen() {
+    this.displayArea.innerHTML = `
+      <div class="qr-display">
+        <div class="state-badge idle">🔵 IDLE - جاهز للاستخدام</div>
+        <div class="qr-title">⚡ امسح الكود للدفع ⚡</div>
+        <div class="qr-code-container">
+          <div id="qrcode"></div>
+        </div>
+        <div class="qr-instruction">📱 امسح الكود بهاتفك للبدء</div>
+        <div class="qr-subtext">Scan QR code to start payment</div>
+      </div>
+    `;
+    
+    setTimeout(() => this.generateQRCode(), 300);
+  }
+
+  showProductSelected(data) {
+    this.displayArea.innerHTML = `
+      <div class="qr-display">
+        <div class="state-badge waiting">⏳ WAITING FOR ITEM...</div>
+        <div class="order-details">
+          <div class="order-item">
+            <span class="order-label">المنتج:</span>
+            <span class="order-value">${data.selectedProductIcon} ${data.selectedProductName}</span>
+          </div>
+          <div class="order-item">
+            <span class="order-label">السعر:</span>
+            <span class="order-value">${data.selectedProductPrice}.00 ر.س</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  showWaitingPayment(data) {
+    this.displayArea.innerHTML = `
+      <div class="qr-display">
+        <div class="state-badge payment">💳 WAITING FOR PAYMENT...</div>
+        <div class="order-details">
+          <div class="order-item">
+            <span class="order-label">المنتج:</span>
+            <span class="order-value">${data.selectedProductIcon} ${data.selectedProductName}</span>
+          </div>
+          <div class="order-item">
+            <span class="order-label">السعر:</span>
+            <span class="order-value">${data.selectedProductPrice}.00 ر.س</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  showPaymentConfirmed(data) {
+    this.displayArea.innerHTML = `
+      <div class="qr-display">
+        <div class="state-badge payment">✅ PAYMENT CONFIRMED</div>
+        <div class="order-details">
+          <div class="order-item">
+            <span class="order-label">المنتج:</span>
+            <span class="order-value">${data.selectedProductIcon} ${data.selectedProductName}</span>
+          </div>
+          <div class="order-item">
+            <span class="order-label">السعر:</span>
+            <span class="order-value">${data.selectedProductPrice}.00 ر.س</span>
+          </div>
+          <div class="order-item">
+            <span class="order-label">المدفوع:</span>
+            <span class="order-value" style="color: #22c55e;">${data.amountPaid}.00 ر.س</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  showDispensing(data) {
+    this.displayArea.innerHTML = `
+      <div class="qr-display">
+        <div class="state-badge dispensing">⚙️ DISPENSING...</div>
+        <div class="order-details">
+          <div class="order-item">
+            <span class="order-label">المنتج:</span>
+            <span class="order-value">${data.selectedProductIcon} ${data.selectedProductName}</span>
+          </div>
+          <div class="order-item">
+            <span class="order-label">السعر:</span>
+            <span class="order-value">${data.selectedProductPrice}.00 ر.س</span>
+          </div>
+          <div class="order-item">
+            <span class="order-label">المدفوع:</span>
+            <span class="order-value" style="color: #22c55e;">${data.amountPaid}.00 ر.س</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  showReturningChange(data) {
+    this.displayArea.innerHTML = `
+      <div class="qr-display">
+        <div class="state-badge change">💰 RETURNING CHANGE...</div>
+        <div class="order-details">
+          <div class="order-item">
+            <span class="order-label">المنتج:</span>
+            <span class="order-value">${data.selectedProductIcon} ${data.selectedProductName}</span>
+          </div>
+          <div class="order-item">
+            <span class="order-label">السعر:</span>
+            <span class="order-value">${data.selectedProductPrice}.00 ر.س</span>
+          </div>
+          <div class="order-item">
+            <span class="order-label">المدفوع:</span>
+            <span class="order-value" style="color: #22c55e;">${data.amountPaid}.00 ر.س</span>
+          </div>
+          <div class="order-item">
+            <span class="order-label">الباقي:</span>
+            <span class="order-value" style="color: #fbbf24;">${data.change}.00 ر.س</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  showComplete(data) {
+    this.displayArea.innerHTML = `
+      <div class="qr-display">
+        <div class="state-badge complete">✅ COMPLETE</div>
+        <div class="order-details">
+          <div class="order-item">
+            <span class="order-label">المنتج:</span>
+            <span class="order-value">${data.selectedProductIcon} ${data.selectedProductName}</span>
+          </div>
+          <div class="order-item">
+            <span class="order-label">السعر:</span>
+            <span class="order-value">${data.selectedProductPrice}.00 ر.س</span>
+          </div>
+          <div class="order-item">
+            <span class="order-label">المدفوع:</span>
+            <span class="order-value" style="color: #22c55e;">${data.amountPaid}.00 ر.س</span>
+          </div>
+          ${data.change > 0 ? `
+          <div class="order-item">
+            <span class="order-label">الباقي:</span>
+            <span class="order-value" style="color: #fbbf24;">${data.change}.00 ر.س</span>
+          </div>
+          ` : ''}
+        </div>
+        <div class="pickup-message">
+          📦 اذهب لاستلام طلبك!
+        </div>
+      </div>
+    `;
+  }
+
+  generateQRCode() {
+    const qrcodeContainer = document.getElementById('qrcode');
+    if (!qrcodeContainer) return;
+    
+    qrcodeContainer.innerHTML = '';
+    
+    const GITHUB_PAGES_URL = 'https://ayah-saleem.github.io/mobile-payment/mobile.html';
+    const MACHINE_ID = 'VM-001';
+    const mobileAppUrl = `${GITHUB_PAGES_URL}?machine=${MACHINE_ID}`;
+    
+    if (typeof QRCode !== 'undefined') {
+      new QRCode(qrcodeContainer, {
+        text: mobileAppUrl,
+        width: 170,
+        height: 170,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    }
+  }
+}
+
+// ============================================================================
+// FIREBASE LISTENER - Decoupled Input Source
+// ============================================================================
+function listenToFirebase(machineId, stateMachine) {
+  if (!window.machineDatabase) {
+    setTimeout(() => listenToFirebase(machineId, stateMachine), 500);
+    return;
+  }
+  
+  const sessionRef = window.machineRef(window.machineDatabase, `sessions/${machineId}`);
+  
+  let lastState = null;
+  
+  window.machineOnValue(sessionRef, (snapshot) => {
+    const session = snapshot.val();
+    
+    if (!session || !session.state) return;
+    
+    // Avoid duplicate events
+    if (session.state === lastState) return;
+    lastState = session.state;
+    
+    console.log('[FIREBASE] State changed to:', session.state);
+    
+    // Map Firebase state changes to events
+    const stateToEventMap = {
+      'PRODUCT_SELECTED': Events.PRODUCT_SELECTED,
+      'WAITING_PAYMENT': Events.PAYMENT_RECEIVED,
+      'PAYMENT_CONFIRMED': Events.PAYMENT_CONFIRMED,
+      'DISPENSING': Events.DISPENSE_COMPLETE,
+      'RETURNING_CHANGE': Events.CHANGE_RETURNED,
+      'COMPLETE': Events.TRANSACTION_COMPLETE,
+      'IDLE': Events.RESET
+    };
+    
+    const event = stateToEventMap[session.state];
+    if (event) {
+      eventBus.publish(event, session);
+    }
+  });
+}
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+window.addEventListener('load', () => {
+  const MACHINE_ID = 'VM-001';
+  const view = new VendingMachineView();
+  const stateMachine = new VendingMachineContext(MACHINE_ID, view);
+  
+  // Start listening to Firebase
+  listenToFirebase(MACHINE_ID, stateMachine);
+  
+  console.log('='.repeat(60));
+  console.log('VENDING MACHINE STATE MACHINE INITIALIZED');
+  console.log('='.repeat(60));
+  console.log('Formal Definition: M = (Q, Σ, δ, q0, F)');
+  console.log('Q (States): IDLE, PRODUCT_SELECTED, WAITING_PAYMENT, PAYMENT_CONFIRMED, DISPENSING, RETURNING_CHANGE, COMPLETE');
+  console.log('Σ (Events): QR_SCANNED, PRODUCT_SELECTED, PAYMENT_RECEIVED, PAYMENT_CONFIRMED, DISPENSE_COMPLETE, CHANGE_RETURNED, TRANSACTION_COMPLETE, RESET');
+  console.log('q0 (Initial): IDLE');
+  console.log('F (Final): COMPLETE');
+  console.log('='.repeat(60));
+});
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a96511280125dab',t:'MTc2NDk2Njc4Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
