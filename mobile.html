@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile Payment - Event-Driven State Machine</title>
+    <title>Mobile Payment - Vending Machine</title>
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
@@ -32,7 +32,6 @@
         window.firebaseInitialized = true;
     </script>
     <style>
-        /* نفس الـ CSS السابق - محفوظ */
         body {
             box-sizing: border-box;
             margin: 0;
@@ -74,8 +73,13 @@
         }
 
         @keyframes rotate {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .mobile-header {
@@ -94,8 +98,17 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.9; transform: scale(1.02); }
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.9;
+                transform: scale(1.02);
+            }
         }
 
         .machine-id {
@@ -182,8 +195,15 @@
         }
 
         @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .info-row {
@@ -389,7 +409,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .hidden {
@@ -453,6 +475,14 @@
             line-height: 1.5;
         }
     </style>
+    <style>
+        @view-transition {
+            navigation: auto;
+        }
+    </style>
+    <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+    <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
+    <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
 </head>
 
 <body>
@@ -536,10 +566,9 @@
             </div>
         </div>
     </div>
-
     <script>
         // ============================================================================
-        // MOBILE PAYMENT APP - STATE PATTERN + EVENT-DRIVEN ARCHITECTURE
+        // MOBILE PAYMENT APP WITH TIMEOUT HANDLING
         // ============================================================================
 
         const PRODUCTS = [
@@ -553,518 +582,70 @@
 
         const PAYMENT_AMOUNTS = [1, 5, 10, 20, 50, 100];
 
-        /**
-         * ============================================
-         * EVENT BUS (Event-Driven Architecture)
-         * ============================================
-         */
-        class MobileEventBus {
+        class MobilePaymentApp {
             constructor() {
-                this.listeners = new Map();
-            }
-
-            subscribe(eventType, callback) {
-                if (!this.listeners.has(eventType)) {
-                    this.listeners.set(eventType, []);
-                }
-                this.listeners.get(eventType).push(callback);
-            }
-
-            unsubscribe(eventType, callback) {
-                if (this.listeners.has(eventType)) {
-                    const callbacks = this.listeners.get(eventType);
-                    const index = callbacks.indexOf(callback);
-                    if (index > -1) {
-                        callbacks.splice(index, 1);
-                    }
-                }
-            }
-
-            publish(eventType, data) {
-                console.log(`[MOBILE-EVENT] ${eventType}`, data);
-                if (this.listeners.has(eventType)) {
-                    this.listeners.get(eventType).forEach(callback => {
-                        try {
-                            callback(data);
-                        } catch (error) {
-                            console.error(`[MOBILE-EVENT] Error:`, error);
-                        }
-                    });
-                }
-            }
-        }
-
-        /**
-         * ============================================
-         * STATE ABSTRACT CLASS (State Design Pattern)
-         * ============================================
-         */
-        class MobileAppState {
-            constructor(context) {
-                this.context = context;
-                this.name = this.constructor.name;
-            }
-
-            onEnter() {
-                console.log(`[MOBILE-STATE] Entered: ${this.name}`);
-            }
-
-            onExit() {
-                console.log(`[MOBILE-STATE] Exited: ${this.name}`);
-            }
-
-            handleEvent(event) {
-                console.log(`[MOBILE-STATE] ${this.name} handling: ${event.type}`);
-            }
-
-            showUI() {
-                // Override in subclasses
-            }
-
-            startTimer(seconds) {
-                // Override in subclasses
-            }
-
-            cleanup() {
-                // Cleanup resources
-            }
-        }
-
-        /**
-         * ============================================
-         * CONCRETE STATE CLASSES (State Design Pattern)
-         * ============================================
-         */
-        class ProductSelectionState extends MobileAppState {
-            constructor(context) {
-                super(context);
-                this.timer = null;
-                this.timeLeft = 120;
-            }
-
-            onEnter() {
-                super.onEnter();
-                this.showUI();
-                this.startTimer();
-            }
-
-            handleEvent(event) {
-                super.handleEvent(event);
-                switch (event.type) {
-                    case 'PRODUCT_SELECTED':
-                        this.context.transitionTo(new PaymentState(this.context, event.data));
-                        break;
-                    case 'TIMEOUT':
-                        this.context.transitionTo(new TimeoutState(this.context, 'انتهى وقت اختيار المنتج'));
-                        break;
-                    case 'CANCEL':
-                        this.context.transitionTo(new ProductSelectionState(this.context));
-                        break;
-                }
-            }
-
-            showUI() {
-                this.context.view.showProductSelection();
-                this.updateTimerDisplay();
-            }
-
-            startTimer() {
-                this.clearTimer();
-                this.timer = setInterval(() => {
-                    this.timeLeft--;
-                    this.updateTimerDisplay();
-                    
-                    if (this.timeLeft <= 0) {
-                        this.clearTimer();
-                        this.context.eventBus.publish('TIMEOUT', {
-                            reason: 'انتهى وقت اختيار المنتج'
-                        });
-                    }
-                }, 1000);
-            }
-
-            updateTimerDisplay() {
-                const timerElement = document.getElementById('productTimerValue');
-                if (timerElement) {
-                    timerElement.textContent = this.timeLeft;
-                }
-            }
-
-            clearTimer() {
-                if (this.timer) {
-                    clearInterval(this.timer);
-                    this.timer = null;
-                }
-            }
-
-            onExit() {
-                super.onExit();
-                this.clearTimer();
-            }
-        }
-
-        class PaymentState extends MobileAppState {
-            constructor(context, productData) {
-                super(context);
-                this.productData = productData;
-                this.timer = null;
-                this.timeLeft = 60;
+                this.machineId = this.getMachineIdFromURL();
+                this.selectedProduct = null;
                 this.selectedAmount = null;
-            }
-
-            onEnter() {
-                super.onEnter();
-                this.showUI();
-                this.startTimer();
-            }
-
-            handleEvent(event) {
-                super.handleEvent(event);
-                switch (event.type) {
-                    case 'PAYMENT_CONFIRMED':
-                        const paymentData = {
-                            amountPaid: event.data.amountPaid,
-                            change: event.data.change
-                        };
-                        this.context.transitionTo(new CompleteState(this.context, {
-                            ...this.productData,
-                            payment: paymentData
-                        }));
-                        break;
-                    case 'CANCEL':
-                        this.context.transitionTo(new ProductSelectionState(this.context));
-                        break;
-                    case 'TIMEOUT':
-                        this.context.transitionTo(new TimeoutState(this.context, 'انتهى وقت الدفع'));
-                        break;
-                }
-            }
-
-            showUI() {
-                this.context.view.showPayment(this.productData);
-                this.updateTimerDisplay();
-            }
-
-            startTimer() {
-                this.clearTimer();
-                this.timer = setInterval(() => {
-                    this.timeLeft--;
-                    this.updateTimerDisplay();
-                    
-                    if (this.timeLeft <= 0) {
-                        this.clearTimer();
-                        this.context.eventBus.publish('TIMEOUT', {
-                            reason: 'انتهى وقت الدفع'
-                        });
-                    }
-                }, 1000);
-            }
-
-            updateTimerDisplay() {
-                const timerElement = document.getElementById('paymentTimerValue');
-                if (timerElement) {
-                    timerElement.textContent = this.timeLeft;
-                }
-            }
-
-            clearTimer() {
-                if (this.timer) {
-                    clearInterval(this.timer);
-                    this.timer = null;
-                }
-            }
-
-            onExit() {
-                super.onExit();
-                this.clearTimer();
-            }
-        }
-
-        class CompleteState extends MobileAppState {
-            constructor(context, transactionData) {
-                super(context);
-                this.transactionData = transactionData;
-                this.timer = null;
-                this.timeLeft = 60;
-            }
-
-            onEnter() {
-                super.onEnter();
-                this.showUI();
-                this.startTimer();
-            }
-
-            handleEvent(event) {
-                super.handleEvent(event);
-                switch (event.type) {
-                    case 'NEW_TRANSACTION':
-                        this.context.transitionTo(new ProductSelectionState(this.context));
-                        break;
-                    case 'TIMEOUT':
-                        this.context.transitionTo(new ProductSelectionState(this.context));
-                        break;
-                }
-            }
-
-            showUI() {
-                this.context.view.showComplete(this.transactionData);
-                this.updateTimerDisplay();
-            }
-
-            startTimer() {
-                this.clearTimer();
-                this.timer = setInterval(() => {
-                    this.timeLeft--;
-                    this.updateTimerDisplay();
-                    
-                    if (this.timeLeft <= 0) {
-                        this.clearTimer();
-                        this.context.eventBus.publish('TIMEOUT', {
-                            reason: 'انتهى وقت الاستلام'
-                        });
-                    }
-                }, 1000);
-            }
-
-            updateTimerDisplay() {
-                const timerElement = document.getElementById('completeTimerValue');
-                if (timerElement) {
-                    timerElement.textContent = this.timeLeft;
-                }
-            }
-
-            clearTimer() {
-                if (this.timer) {
-                    clearInterval(this.timer);
-                    this.timer = null;
-                }
-            }
-
-            onExit() {
-                super.onExit();
-                this.clearTimer();
-            }
-        }
-
-        class TimeoutState extends MobileAppState {
-            constructor(context, reason) {
-                super(context);
-                this.reason = reason;
-            }
-
-            onEnter() {
-                super.onEnter();
-                this.showUI();
-            }
-
-            handleEvent(event) {
-                super.handleEvent(event);
-                switch (event.type) {
-                    case 'RESTART':
-                        this.context.transitionTo(new ProductSelectionState(this.context));
-                        break;
-                }
-            }
-
-            showUI() {
-                this.context.view.showTimeout(this.reason);
-            }
-        }
-
-        /**
-         * ============================================
-         * MOBILE APP MODEL (Model-View Separation)
-         * ============================================
-         */
-        class MobileAppModel {
-            constructor(machineId) {
-                this.machineId = machineId;
-                this.eventBus = new MobileEventBus();
-                this.currentState = new ProductSelectionState(this);
-                this.currentState.onEnter();
+                this.currentState = 'IDLE';
                 
+                // Timers
+                this.timers = {
+                    productTimer: null,
+                    paymentTimer: null,
+                    completeTimer: null
+                };
+                
+                // Timeout state
+                this.timeoutReason = '';
+                
+                this.initializeElements();
                 this.waitForFirebase();
-                this.setupEventListeners();
+                
+                document.getElementById('machineIdDisplay').textContent = `Machine: ${this.machineId}`;
             }
 
-            transitionTo(newState) {
-                console.log(`[MOBILE-MODEL] Transition: ${this.currentState.name} → ${newState.name}`);
-                
-                this.currentState.onExit();
-                this.currentState.cleanup();
-                
-                this.currentState = newState;
-                this.currentState.onEnter();
-                
-                this.updateFirebaseState();
-                
-                this.eventBus.publish('STATE_CHANGED', {
-                    state: this.currentState,
-                    stateName: this.currentState.name
-                });
+            getMachineIdFromURL() {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get('machine') || 'VM-001';
             }
 
-            handleEvent(event) {
-                this.currentState.handleEvent(event);
+            initializeElements() {
+                this.productSelectionArea = document.getElementById('productSelectionArea');
+                this.paymentArea = document.getElementById('paymentArea');
+                this.completeArea = document.getElementById('completeArea');
+                this.timeoutArea = document.getElementById('timeoutArea');
+                this.productsGrid = document.getElementById('productsGrid');
+                this.paymentOptions = document.getElementById('paymentOptions');
+                this.customPaymentInput = document.getElementById('customPaymentInput');
+                this.confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
+                this.cancelBtn = document.getElementById('cancelBtn');
+                this.newTransactionBtn = document.getElementById('newTransactionBtn');
+                this.restartBtn = document.getElementById('restartBtn');
+                this.statusMessage = document.getElementById('statusMessage');
+                this.currentStateDisplay = document.getElementById('currentStateDisplay');
+                this.timeoutMessage = document.getElementById('timeoutMessage');
+                
+                // Timer displays
+                this.productTimerValue = document.getElementById('productTimerValue');
+                this.paymentTimerValue = document.getElementById('paymentTimerValue');
+                this.completeTimerValue = document.getElementById('completeTimerValue');
             }
 
             waitForFirebase() {
                 if (window.firebaseInitialized && window.firebaseDB) {
-                    this.setupFirebaseListener();
+                    console.log('[MOBILE] Firebase initialized');
+                    this.loadProducts();
+                    this.setupEventListeners();
+                    this.listenToMachineState();
+                    this.startProductSelectionTimer(120); // 2 minutes for product selection
                 } else {
                     setTimeout(() => this.waitForFirebase(), 100);
                 }
             }
 
-            setupFirebaseListener() {
-                const sessionRef = window.firebaseRef(window.firebaseDB, `machines/${this.machineId}/session`);
-                
-                window.firebaseOnValue(sessionRef, (snapshot) => {
-                    const session = snapshot.val();
-                    if (!session) return;
-
-                    console.log('[MOBILE-MODEL] Firebase state:', session.state);
-                    
-                    // Update current state display
-                    this.eventBus.publish('MACHINE_STATE_UPDATED', {
-                        state: session.state
-                    });
-                });
-            }
-
-            updateFirebaseState() {
-                if (!window.firebaseDB) return;
-
-                const stateName = this.currentState.name.replace('State', '').toUpperCase();
-                const sessionRef = window.firebaseRef(window.firebaseDB, `machines/${this.machineId}/session`);
-                
-                let sessionData = {
-                    state: stateName,
-                    timestamp: Date.now()
-                };
-
-                // Add product data from current state if available
-                if (this.currentState.productData) {
-                    sessionData.productName = this.currentState.productData.name;
-                    sessionData.productIcon = this.currentState.productData.icon;
-                    sessionData.productPrice = this.currentState.productData.price;
-                }
-
-                // Add transaction data if available
-                if (this.currentState.transactionData) {
-                    const data = this.currentState.transactionData;
-                    sessionData.productName = data.name;
-                    sessionData.productIcon = data.icon;
-                    sessionData.productPrice = data.price;
-                    
-                    if (data.payment) {
-                        sessionData.amountPaid = data.payment.amountPaid;
-                        sessionData.change = data.payment.change;
-                    }
-                }
-
-                window.firebaseSet(sessionRef, sessionData);
-            }
-
-            setupEventListeners() {
-                // UI Events
-                this.eventBus.subscribe('PRODUCT_SELECTED', (data) => {
-                    this.handleEvent({ type: 'PRODUCT_SELECTED', data });
-                });
-
-                this.eventBus.subscribe('PAYMENT_CONFIRMED', (data) => {
-                    this.handleEvent({ type: 'PAYMENT_CONFIRMED', data });
-                });
-
-                this.eventBus.subscribe('CANCEL', () => {
-                    this.handleEvent({ type: 'CANCEL' });
-                });
-
-                this.eventBus.subscribe('NEW_TRANSACTION', () => {
-                    this.handleEvent({ type: 'NEW_TRANSACTION' });
-                });
-
-                this.eventBus.subscribe('RESTART', () => {
-                    this.handleEvent({ type: 'RESTART' });
-                });
-
-                this.eventBus.subscribe('TIMEOUT', (data) => {
-                    this.handleEvent({ type: 'TIMEOUT', data });
-                });
-            }
-
-            getCurrentState() {
-                return this.currentState;
-            }
-        }
-
-        /**
-         * ============================================
-         * MOBILE APP VIEW (Model-View Separation)
-         * ============================================
-         */
-        class MobileAppView {
-            constructor(model) {
-                this.model = model;
-                this.initializeElements();
-                
-                // Subscribe to model events
-                this.model.eventBus.subscribe('STATE_CHANGED', (data) => {
-                    this.updateCurrentStateDisplay(data.stateName);
-                });
-                
-                this.model.eventBus.subscribe('MACHINE_STATE_UPDATED', (data) => {
-                    this.updateMachineStateDisplay(data.state);
-                });
-                
-                this.setupEventListeners();
-                
-                // Initial UI
-                this.showProductSelection();
-            }
-
-            initializeElements() {
-                this.elements = {
-                    machineIdDisplay: document.getElementById('machineIdDisplay'),
-                    currentStateDisplay: document.getElementById('currentStateDisplay'),
-                    productSelectionArea: document.getElementById('productSelectionArea'),
-                    paymentArea: document.getElementById('paymentArea'),
-                    completeArea: document.getElementById('completeArea'),
-                    timeoutArea: document.getElementById('timeoutArea'),
-                    productsGrid: document.getElementById('productsGrid'),
-                    paymentOptions: document.getElementById('paymentOptions'),
-                    customPaymentInput: document.getElementById('customPaymentInput'),
-                    confirmPaymentBtn: document.getElementById('confirmPaymentBtn'),
-                    cancelBtn: document.getElementById('cancelBtn'),
-                    newTransactionBtn: document.getElementById('newTransactionBtn'),
-                    restartBtn: document.getElementById('restartBtn'),
-                    statusMessage: document.getElementById('statusMessage'),
-                    timeoutMessage: document.getElementById('timeoutMessage')
-                };
-                
-                this.elements.machineIdDisplay.textContent = `Machine: ${this.model.machineId}`;
-            }
-
-            setupEventListeners() {
-                // Product selection
-                this.loadProducts();
-                
-                // Payment buttons
-                this.elements.confirmPaymentBtn.addEventListener('click', () => this.handlePaymentConfirmation());
-                this.elements.cancelBtn.addEventListener('click', () => this.model.eventBus.publish('CANCEL'));
-                this.elements.newTransactionBtn.addEventListener('click', () => this.model.eventBus.publish('NEW_TRANSACTION'));
-                this.elements.restartBtn.addEventListener('click', () => this.model.eventBus.publish('RESTART'));
-                
-                // Payment input
-                this.elements.customPaymentInput.addEventListener('input', () => {
-                    document.querySelectorAll('.payment-option').forEach(opt => {
-                        opt.classList.remove('selected');
-                    });
-                });
-            }
-
             loadProducts() {
-                this.elements.productsGrid.innerHTML = '';
+                this.productsGrid.innerHTML = '';
                 PRODUCTS.forEach(product => {
                     const productCard = document.createElement('div');
                     productCard.className = 'product-card';
@@ -1073,89 +654,286 @@
                         <div class="product-name">${product.name}</div>
                         <div class="product-price">${product.price.toFixed(2)} ₪</div>
                     `;
-                    productCard.addEventListener('click', () => {
-                        this.model.eventBus.publish('PRODUCT_SELECTED', product);
-                    });
-                    this.elements.productsGrid.appendChild(productCard);
+                    productCard.addEventListener('click', () => this.selectProduct(product, productCard));
+                    this.productsGrid.appendChild(productCard);
                 });
             }
 
-            showProductSelection() {
-                this.hideAllAreas();
-                this.elements.productSelectionArea.classList.remove('hidden');
+            setupEventListeners() {
+                this.confirmPaymentBtn.addEventListener('click', () => this.confirmPayment());
+                this.cancelBtn.addEventListener('click', () => this.cancelTransaction());
+                this.newTransactionBtn.addEventListener('click', () => this.startNewTransaction());
+                this.restartBtn.addEventListener('click', () => this.restartAfterTimeout());
+
+                this.customPaymentInput.addEventListener('input', () => {
+                    this.selectedAmount = null;
+                    document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('selected'));
+                });
+            }
+
+            // Timer Methods
+            startProductSelectionTimer(seconds = 120) {
+                this.clearAllTimers();
                 
-                // Reset product selections
+                let timeLeft = seconds;
+                this.productTimerValue.textContent = timeLeft;
+                
+                this.timers.productTimer = setInterval(() => {
+                    this.productTimerValue.textContent = timeLeft;
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(this.timers.productTimer);
+                        this.handleTimeout('انتهى وقت اختيار المنتج (2 دقيقة). يجب إعادة المسح من البداية.');
+                    }
+                    timeLeft--;
+                }, 1000);
+            }
+
+            startPaymentTimer(seconds = 60) {
+                this.clearAllTimers();
+                
+                let timeLeft = seconds;
+                this.paymentTimerValue.textContent = timeLeft;
+                
+                this.timers.paymentTimer = setInterval(() => {
+                    this.paymentTimerValue.textContent = timeLeft;
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(this.timers.paymentTimer);
+                        this.handleTimeout('انتهى وقت الدفع (1 دقيقة). يجب إعادة العملية من البداية.');
+                    }
+                    timeLeft--;
+                }, 1000);
+            }
+
+            startCompleteTimer(seconds = 60) {
+                this.clearAllTimers();
+                
+                let timeLeft = seconds;
+                this.completeTimerValue.textContent = timeLeft;
+                
+                this.timers.completeTimer = setInterval(() => {
+                    this.completeTimerValue.textContent = timeLeft;
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(this.timers.completeTimer);
+                        this.handleTimeout('انتهى وقت الاستلام (1 دقيقة). تمت العودة إلى الشاشة الرئيسية.');
+                    }
+                    timeLeft--;
+                }, 1000);
+            }
+
+            clearAllTimers() {
+                Object.values(this.timers).forEach(timer => {
+                    if (timer) clearInterval(timer);
+                });
+            }
+
+            handleTimeout(reason) {
+                console.log('[MOBILE] Timeout occurred:', reason);
+                this.timeoutReason = reason;
+                
+                // Update machine state to IDLE
+                this.updateMachineState('IDLE', {
+                    timeoutReason: reason,
+                    timeoutAt: Date.now()
+                });
+                
+                // Show timeout screen
+                this.showTimeoutScreen(reason);
+            }
+
+            showTimeoutScreen(reason) {
+                // Hide all other areas
+                this.productSelectionArea.classList.add('hidden');
+                this.paymentArea.classList.add('hidden');
+                this.completeArea.classList.add('hidden');
+                
+                // Show timeout area
+                this.timeoutArea.classList.remove('hidden');
+                
+                // Update timeout message
+                this.timeoutMessage.textContent = `
+                    ${reason}
+                    الرجاء إعادة العملية من البداية عن طريق مسح رمز QR مرة أخرى.
+                `;
+            }
+
+            async restartAfterTimeout() {
+                // Reset everything
+                this.selectedProduct = null;
+                this.selectedAmount = null;
+                this.timeoutReason = '';
+                
+                // Hide timeout area
+                this.timeoutArea.classList.add('hidden');
+                
+                // Show product selection with timer
+                this.productSelectionArea.classList.remove('hidden');
+                this.startProductSelectionTimer(120);
+                
+                // Clear all selections
                 document.querySelectorAll('.product-card').forEach(card => {
                     card.classList.remove('selected');
                 });
+                
+                // Reset machine state
+                await this.updateMachineState('IDLE', {
+                    restartedAfterTimeout: true,
+                    restartedAt: Date.now()
+                });
             }
 
-            showPayment(productData) {
-                this.hideAllAreas();
-                this.elements.paymentArea.classList.remove('hidden');
+            async selectProduct(product, cardElement) {
+                // Clear product selection timer
+                this.clearAllTimers();
                 
-                // Show selected product info
-                this.elements.selectedProductInfo.innerHTML = `
+                this.selectedProduct = product;
+
+                document.querySelectorAll('.product-card').forEach(card => {
+                    card.classList.remove('selected');
+                });
+                cardElement.classList.add('selected');
+
+                await this.updateMachineState('PRODUCT_SELECTED', {
+                    productId: product.id,
+                    productName: product.name,
+                    productIcon: product.icon,
+                    productPrice: product.price
+                });
+
+                this.showPaymentArea();
+            }
+
+            showPaymentArea() {
+                this.productSelectionArea.classList.add('hidden');
+                this.paymentArea.classList.remove('hidden');
+                this.completeArea.classList.add('hidden');
+                this.timeoutArea.classList.add('hidden');
+
+                document.getElementById('selectedProductInfo').innerHTML = `
                     <div class="info-row">
                         <span class="info-label">المنتج:</span>
-                        <span class="info-value">${productData.icon} ${productData.name}</span>
+                        <span class="info-value">${this.selectedProduct.icon} ${this.selectedProduct.name}</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">السعر:</span>
-                        <span class="info-value">${productData.price.toFixed(2)} ₪</span>
+                        <span class="info-value">${this.selectedProduct.price.toFixed(2)} ₪</span>
                     </div>
                 `;
+
+                this.loadPaymentOptions();
+                this.customPaymentInput.value = '';
+                this.selectedAmount = null;
+                this.statusMessage.innerHTML = '';
                 
-                // Load payment options
-                this.loadPaymentOptions(productData.price);
-                
-                // Reset status
-                this.elements.statusMessage.innerHTML = '';
-                this.elements.confirmPaymentBtn.disabled = false;
-                this.elements.confirmPaymentBtn.innerHTML = '✅ تأكيد الدفع';
+                // Start payment timer (1 minute)
+                this.startPaymentTimer(60);
             }
 
-            loadPaymentOptions(productPrice) {
-                this.elements.paymentOptions.innerHTML = '';
-                
+            loadPaymentOptions() {
+                this.paymentOptions.innerHTML = '';
+
                 PAYMENT_AMOUNTS.forEach(amount => {
-                    if (amount >= productPrice) {
-                        const option = document.createElement('div');
-                        option.className = 'payment-option';
-                        option.textContent = `${amount} ₪`;
-                        option.addEventListener('click', () => {
-                            document.querySelectorAll('.payment-option').forEach(opt => {
-                                opt.classList.remove('selected');
-                            });
-                            option.classList.add('selected');
-                            this.elements.customPaymentInput.value = '';
-                        });
-                        this.elements.paymentOptions.appendChild(option);
-                    }
+                    const option = document.createElement('div');
+                    option.className = 'payment-option';
+                    option.textContent = `${amount} ₪`;
+                    option.addEventListener('click', () => this.selectPaymentAmount(amount, option));
+                    this.paymentOptions.appendChild(option);
                 });
-                
-                // Reset custom input
-                this.elements.customPaymentInput.value = '';
             }
 
-            showComplete(transactionData) {
-                this.hideAllAreas();
-                this.elements.completeArea.classList.remove('hidden');
-                
-                const change = transactionData.payment?.change || 0;
-                
-                this.elements.completeInfo.innerHTML = `
+            selectPaymentAmount(amount, optionElement) {
+                this.selectedAmount = amount;
+                this.customPaymentInput.value = '';
+
+                document.querySelectorAll('.payment-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                optionElement.classList.add('selected');
+            }
+
+            async confirmPayment() {
+                let amountPaid = this.selectedAmount || parseFloat(this.customPaymentInput.value);
+
+                if (!amountPaid || amountPaid <= 0) {
+                    this.showStatus('error', '❌ الرجاء اختيار أو إدخال مبلغ صحيح');
+                    return;
+                }
+
+                if (amountPaid < this.selectedProduct.price) {
+                    this.showStatus('error', `❌ المبلغ غير كافي! السعر: ${this.selectedProduct.price.toFixed(2)} ₪`);
+                    return;
+                }
+
+                this.confirmPaymentBtn.disabled = true;
+                this.confirmPaymentBtn.innerHTML = '⏳ جاري المعالجة... <span class="loading"></span>';
+
+                const change = amountPaid - this.selectedProduct.price;
+
+                // Clear payment timer
+                this.clearAllTimers();
+
+                await this.updateMachineState('WAITING_PAYMENT', {
+                    amountPaid: amountPaid,
+                    change: change
+                });
+
+                setTimeout(async () => {
+                    await this.updateMachineState('PAYMENT_CONFIRMED', {
+                        amountPaid: amountPaid,
+                        change: change
+                    });
+
+                    setTimeout(async () => {
+                        await this.updateMachineState('DISPENSING', {
+                            amountPaid: amountPaid,
+                            change: change
+                        });
+
+                        setTimeout(async () => {
+                            if (change > 0) {
+                                await this.updateMachineState('RETURNING_CHANGE', {
+                                    amountPaid: amountPaid,
+                                    change: change
+                                });
+
+                                setTimeout(async () => {
+                                    await this.updateMachineState('COMPLETE', {
+                                        amountPaid: amountPaid,
+                                        change: change
+                                    });
+                                    this.showCompleteArea(amountPaid, change);
+                                }, 2000);
+                            } else {
+                                await this.updateMachineState('COMPLETE', {
+                                    amountPaid: amountPaid,
+                                    change: 0
+                                });
+                                this.showCompleteArea(amountPaid, 0);
+                            }
+                        }, 2000);
+                    }, 1500);
+                }, 1000);
+            }
+
+            showCompleteArea(amountPaid, change) {
+                this.paymentArea.classList.add('hidden');
+                this.completeArea.classList.remove('hidden');
+                this.timeoutArea.classList.add('hidden');
+
+                document.getElementById('completeInfo').innerHTML = `
                     <div class="info-row">
                         <span class="info-label">المنتج:</span>
-                        <span class="info-value">${transactionData.icon} ${transactionData.name}</span>
+                        <span class="info-value">${this.selectedProduct.icon} ${this.selectedProduct.name}</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">السعر:</span>
-                        <span class="info-value">${transactionData.price.toFixed(2)} ₪</span>
+                        <span class="info-value">${this.selectedProduct.price.toFixed(2)} ₪</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">المدفوع:</span>
-                        <span class="info-value" style="color: #22c55e;">${transactionData.payment?.amountPaid.toFixed(2)} ₪</span>
+                        <span class="info-value" style="color: #22c55e;">${amountPaid.toFixed(2)} ₪</span>
                     </div>
                     ${change > 0 ? `
                     <div class="info-row">
@@ -1164,117 +942,104 @@
                     </div>
                     ` : ''}
                 `;
+                
+                // Start complete timer (1 minute)
+                this.startCompleteTimer(60);
             }
 
-            showTimeout(reason) {
-                this.hideAllAreas();
-                this.elements.timeoutArea.classList.remove('hidden');
-                
-                this.elements.timeoutMessage.textContent = `
-                    ${reason}
-                    الرجاء إعادة العملية من البداية عن طريق مسح رمز QR مرة أخرى.
-                `;
+            async cancelTransaction() {
+                this.clearAllTimers();
+                await this.updateMachineState('IDLE', {
+                    cancelledAt: Date.now(),
+                    cancelledBy: 'user'
+                });
+                this.startNewTransaction();
             }
 
-            hideAllAreas() {
-                this.elements.productSelectionArea.classList.add('hidden');
-                this.elements.paymentArea.classList.add('hidden');
-                this.elements.completeArea.classList.add('hidden');
-                this.elements.timeoutArea.classList.add('hidden');
-            }
+            async startNewTransaction() {
+                this.clearAllTimers();
+                await this.updateMachineState('IDLE', {});
 
-            handlePaymentConfirmation() {
-                let amountPaid = null;
+                this.selectedProduct = null;
+                this.selectedAmount = null;
+                this.productSelectionArea.classList.remove('hidden');
+                this.paymentArea.classList.add('hidden');
+                this.completeArea.classList.add('hidden');
+                this.timeoutArea.classList.add('hidden');
+
+                this.confirmPaymentBtn.disabled = false;
+                this.confirmPaymentBtn.innerHTML = '✅ تأكيد الدفع';
+
+                document.querySelectorAll('.product-card').forEach(card => {
+                    card.classList.remove('selected');
+                });
                 
-                // Check selected payment option
-                const selectedOption = document.querySelector('.payment-option.selected');
-                if (selectedOption) {
-                    amountPaid = parseFloat(selectedOption.textContent);
-                } else if (this.elements.customPaymentInput.value) {
-                    amountPaid = parseFloat(this.elements.customPaymentInput.value);
-                }
-                
-                if (!amountPaid || amountPaid <= 0) {
-                    this.showStatus('error', '❌ الرجاء اختيار أو إدخال مبلغ صحيح');
-                    return;
-                }
-                
-                // Get product price from current state
-                const currentState = this.model.getCurrentState();
-                const productPrice = currentState.productData?.price;
-                
-                if (!productPrice) {
-                    this.showStatus('error', '❌ لم يتم اختيار منتج');
-                    return;
-                }
-                
-                if (amountPaid < productPrice) {
-                    this.showStatus('error', `❌ المبلغ غير كافي! السعر: ${productPrice.toFixed(2)} ₪`);
-                    return;
-                }
-                
-                const change = amountPaid - productPrice;
-                
-                this.elements.confirmPaymentBtn.disabled = true;
-                this.elements.confirmPaymentBtn.innerHTML = '⏳ جاري المعالجة... <span class="loading"></span>';
-                
-                // Publish payment confirmed event
-                setTimeout(() => {
-                    this.model.eventBus.publish('PAYMENT_CONFIRMED', {
-                        amountPaid: amountPaid,
-                        change: change
-                    });
-                }, 1000);
+                // Start product selection timer
+                this.startProductSelectionTimer(120);
             }
 
             showStatus(type, message) {
-                this.elements.statusMessage.className = `status-message status-${type}`;
-                this.elements.statusMessage.textContent = message;
+                this.statusMessage.className = `status-message status-${type}`;
+                this.statusMessage.textContent = message;
             }
 
-            updateCurrentStateDisplay(stateName) {
-                const displayName = stateName
-                    .replace('State', '')
-                    .replace(/([A-Z])/g, ' $1')
-                    .trim();
-                
-                this.elements.currentStateDisplay.textContent = displayName;
+            async updateMachineState(state, additionalData = {}) {
+                if (!window.firebaseDB) {
+                    console.error('[MOBILE] Firebase not initialized');
+                    return;
+                }
+
+                const sessionData = {
+                    state: state,
+                    timestamp: Date.now(),
+                    ...additionalData
+                };
+
+                if (this.selectedProduct) {
+                    sessionData.productId = this.selectedProduct.id;
+                    sessionData.productName = this.selectedProduct.name;
+                    sessionData.productIcon = this.selectedProduct.icon;
+                    sessionData.productPrice = this.selectedProduct.price;
+                }
+
+                const sessionRef = window.firebaseRef(window.firebaseDB, `machines/${this.machineId}/session`);
+                await window.firebaseSet(sessionRef, sessionData);
+
+                console.log(`[MOBILE] Updated state to: ${state}`, sessionData);
             }
 
-            updateMachineStateDisplay(state) {
-                console.log('[VIEW] Machine state updated:', state);
+            listenToMachineState() {
+                const sessionRef = window.firebaseRef(window.firebaseDB, `machines/${this.machineId}/session`);
+
+                window.firebaseOnValue(sessionRef, (snapshot) => {
+                    const session = snapshot.val();
+
+                    if (!session || !session.state) {
+                        this.currentState = 'IDLE';
+                        this.currentStateDisplay.textContent = 'IDLE';
+                        return;
+                    }
+
+                    this.currentState = session.state;
+                    this.currentStateDisplay.textContent = session.state;
+
+                    console.log('[MOBILE] Machine state:', session.state);
+                    
+                    // Check for timeout from machine side
+                    if (session.state === 'IDLE' && session.timeoutReason) {
+                        // Machine has timed out, show timeout screen
+                        this.handleTimeout(session.timeoutReason);
+                    }
+                });
             }
         }
 
-        /**
-         * ============================================
-         * INITIALIZATION
-         * ============================================
-         */
-        class MobilePaymentApp {
-            constructor() {
-                this.machineId = this.getMachineIdFromURL();
-                
-                // Create Model
-                this.model = new MobileAppModel(this.machineId);
-                
-                // Create View
-                this.view = new MobileAppView(this.model);
-                
-                console.log('[MOBILE-APP] Initialized with State Pattern ✓');
-            }
-
-            getMachineIdFromURL() {
-                const urlParams = new URLSearchParams(window.location.search);
-                return urlParams.get('machine') || 'VM-001';
-            }
-        }
-
-        // Start the application
         window.addEventListener('load', () => {
             new MobilePaymentApp();
+            console.log('[MOBILE] Mobile Payment App Initialized with Timeout Handling');
         });
     </script>
+    <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'9a970bbe57905daa',t:'MTc2NDk3NDQzMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
 </body>
 
 </html>
