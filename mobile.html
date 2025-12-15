@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile Payment - Vending Machine</title><!-- Firebase SDK -->
+    <title>Mobile Payment - Vending Machine</title>
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, set, onValue, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
@@ -439,6 +440,40 @@
             color: #ffffff;
             text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
         }
+
+        .timeout-section {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%);
+            border: 3px solid #ef4444;
+            border-radius: 20px;
+            padding: 25px;
+            margin-top: 20px;
+            max-width: 400px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+            box-shadow: 0 15px 35px rgba(239, 68, 68, 0.3);
+            animation: fadeInUp 0.5s ease-out;
+            text-align: center;
+        }
+
+        .timeout-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .timeout-title {
+            font-size: 20px;
+            font-weight: 900;
+            color: #ef4444;
+            margin-bottom: 10px;
+        }
+
+        .timeout-message {
+            font-size: 16px;
+            color: #ffffff;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
     </style>
     <style>
         @view-transition {
@@ -465,11 +500,18 @@
             <div class="state-value" id="currentStateDisplay">
                 IDLE
             </div>
-        </div><!-- Step 1: Product Selection -->
+        </div>
+        
+        <!-- Step 1: Product Selection -->
         <div class="content-area" id="productSelectionArea">
             <h2 class="section-title">🛒 اختر المنتج</h2>
             <div class="products-grid" id="productsGrid"></div>
-        </div><!-- Step 2: Payment -->
+            <div id="productTimerInfo" style="text-align: center; margin-top: 15px; color: #fbbf24;">
+                ⏰ الوقت المتبقي: <span id="productTimerValue">120</span> ثانية
+            </div>
+        </div>
+        
+        <!-- Step 2: Payment -->
         <div class="content-area hidden" id="paymentArea">
             <h2 class="section-title">💳 الدفع</h2>
             <div class="selected-product-info" id="selectedProductInfo"></div>
@@ -477,24 +519,56 @@
                 <div class="payment-options" id="paymentOptions"></div>
                 <div class="payment-divider">
                     أو أدخل مبلغ مخصص
-                </div><input type="number" class="payment-input" id="customPaymentInput" placeholder="أدخل المبلغ (₪)"
-                    min="0" step="0.01"> <button class="btn btn-success" id="confirmPaymentBtn"> ✅ تأكيد الدفع </button>
-                <button class="btn btn-warning" id="cancelBtn"> ❌ إلغاء </button>
+                </div>
+                <input type="number" class="payment-input" id="customPaymentInput" placeholder="أدخل المبلغ (₪)"
+                    min="0" step="0.01">
+                <button class="btn btn-success" id="confirmPaymentBtn">
+                    ✅ تأكيد الدفع
+                </button>
+                <button class="btn btn-warning" id="cancelBtn">
+                    ❌ إلغاء
+                </button>
+            </div>
+            <div id="paymentTimerInfo" style="text-align: center; margin-top: 15px; color: #fbbf24;">
+                ⏰ الوقت المتبقي: <span id="paymentTimerValue">60</span> ثانية
             </div>
             <div id="statusMessage"></div>
-        </div><!-- Step 3: Transaction Complete -->
+        </div>
+        
+        <!-- Step 3: Transaction Complete -->
         <div class="content-area hidden" id="completeArea">
             <h2 class="section-title">✅ تمت العملية بنجاح</h2>
             <div class="selected-product-info" id="completeInfo"></div>
             <div class="status-message status-success">
                 📦 اذهب لاستلام طلبك من الماكينة!
-            </div><button class="btn btn-primary" id="newTransactionBtn" style="margin-top: 20px;"> 🔄 عملية جديدة
+            </div>
+            <div id="completeTimerInfo" style="text-align: center; margin-top: 15px; color: #fbbf24;">
+                ⏰ العودة التلقائية خلال: <span id="completeTimerValue">60</span> ثانية
+            </div>
+            <button class="btn btn-primary" id="newTransactionBtn" style="margin-top: 20px;">
+                🔄 عملية جديدة
             </button>
+        </div>
+        
+        <!-- Step 4: Timeout Error -->
+        <div class="content-area hidden" id="timeoutArea">
+            <h2 class="section-title">⏰ انتهى الوقت</h2>
+            <div class="timeout-section">
+                <div class="timeout-icon">⏰</div>
+                <div class="timeout-title">انتهى الوقت المخصص</div>
+                <div class="timeout-message" id="timeoutMessage">
+                    لقد تجاوزت الوقت المحدد للعملية.
+                    يجب إعادة العملية من البداية.
+                </div>
+                <button class="btn btn-warning" id="restartBtn">
+                    🔄 إعادة العملية من البداية
+                </button>
+            </div>
         </div>
     </div>
     <script>
         // ============================================================================
-        // MOBILE PAYMENT APP
+        // MOBILE PAYMENT APP WITH TIMEOUT HANDLING
         // ============================================================================
 
         const PRODUCTS = [
@@ -514,10 +588,20 @@
                 this.selectedProduct = null;
                 this.selectedAmount = null;
                 this.currentState = 'IDLE';
-
+                
+                // Timers
+                this.timers = {
+                    productTimer: null,
+                    paymentTimer: null,
+                    completeTimer: null
+                };
+                
+                // Timeout state
+                this.timeoutReason = '';
+                
                 this.initializeElements();
                 this.waitForFirebase();
-
+                
                 document.getElementById('machineIdDisplay').textContent = `Machine: ${this.machineId}`;
             }
 
@@ -530,14 +614,22 @@
                 this.productSelectionArea = document.getElementById('productSelectionArea');
                 this.paymentArea = document.getElementById('paymentArea');
                 this.completeArea = document.getElementById('completeArea');
+                this.timeoutArea = document.getElementById('timeoutArea');
                 this.productsGrid = document.getElementById('productsGrid');
                 this.paymentOptions = document.getElementById('paymentOptions');
                 this.customPaymentInput = document.getElementById('customPaymentInput');
                 this.confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
                 this.cancelBtn = document.getElementById('cancelBtn');
                 this.newTransactionBtn = document.getElementById('newTransactionBtn');
+                this.restartBtn = document.getElementById('restartBtn');
                 this.statusMessage = document.getElementById('statusMessage');
                 this.currentStateDisplay = document.getElementById('currentStateDisplay');
+                this.timeoutMessage = document.getElementById('timeoutMessage');
+                
+                // Timer displays
+                this.productTimerValue = document.getElementById('productTimerValue');
+                this.paymentTimerValue = document.getElementById('paymentTimerValue');
+                this.completeTimerValue = document.getElementById('completeTimerValue');
             }
 
             waitForFirebase() {
@@ -546,6 +638,7 @@
                     this.loadProducts();
                     this.setupEventListeners();
                     this.listenToMachineState();
+                    this.startProductSelectionTimer(120); // 2 minutes for product selection
                 } else {
                     setTimeout(() => this.waitForFirebase(), 100);
                 }
@@ -557,10 +650,10 @@
                     const productCard = document.createElement('div');
                     productCard.className = 'product-card';
                     productCard.innerHTML = `
-        <div class="product-icon">${product.icon}</div>
-        <div class="product-name">${product.name}</div>
-        <div class="product-price">${product.price.toFixed(2)} ₪</div>
-      `;
+                        <div class="product-icon">${product.icon}</div>
+                        <div class="product-name">${product.name}</div>
+                        <div class="product-price">${product.price.toFixed(2)} ₪</div>
+                    `;
                     productCard.addEventListener('click', () => this.selectProduct(product, productCard));
                     this.productsGrid.appendChild(productCard);
                 });
@@ -570,6 +663,7 @@
                 this.confirmPaymentBtn.addEventListener('click', () => this.confirmPayment());
                 this.cancelBtn.addEventListener('click', () => this.cancelTransaction());
                 this.newTransactionBtn.addEventListener('click', () => this.startNewTransaction());
+                this.restartBtn.addEventListener('click', () => this.restartAfterTimeout());
 
                 this.customPaymentInput.addEventListener('input', () => {
                     this.selectedAmount = null;
@@ -577,7 +671,123 @@
                 });
             }
 
+            // Timer Methods
+            startProductSelectionTimer(seconds = 120) {
+                this.clearAllTimers();
+                
+                let timeLeft = seconds;
+                this.productTimerValue.textContent = timeLeft;
+                
+                this.timers.productTimer = setInterval(() => {
+                    this.productTimerValue.textContent = timeLeft;
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(this.timers.productTimer);
+                        this.handleTimeout('انتهى وقت اختيار المنتج (2 دقيقة). يجب إعادة المسح من البداية.');
+                    }
+                    timeLeft--;
+                }, 1000);
+            }
+
+            startPaymentTimer(seconds = 60) {
+                this.clearAllTimers();
+                
+                let timeLeft = seconds;
+                this.paymentTimerValue.textContent = timeLeft;
+                
+                this.timers.paymentTimer = setInterval(() => {
+                    this.paymentTimerValue.textContent = timeLeft;
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(this.timers.paymentTimer);
+                        this.handleTimeout('انتهى وقت الدفع (1 دقيقة). يجب إعادة العملية من البداية.');
+                    }
+                    timeLeft--;
+                }, 1000);
+            }
+
+            startCompleteTimer(seconds = 60) {
+                this.clearAllTimers();
+                
+                let timeLeft = seconds;
+                this.completeTimerValue.textContent = timeLeft;
+                
+                this.timers.completeTimer = setInterval(() => {
+                    this.completeTimerValue.textContent = timeLeft;
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(this.timers.completeTimer);
+                        this.handleTimeout('انتهى وقت الاستلام (1 دقيقة). تمت العودة إلى الشاشة الرئيسية.');
+                    }
+                    timeLeft--;
+                }, 1000);
+            }
+
+            clearAllTimers() {
+                Object.values(this.timers).forEach(timer => {
+                    if (timer) clearInterval(timer);
+                });
+            }
+
+            handleTimeout(reason) {
+                console.log('[MOBILE] Timeout occurred:', reason);
+                this.timeoutReason = reason;
+                
+                // Update machine state to IDLE
+                this.updateMachineState('IDLE', {
+                    timeoutReason: reason,
+                    timeoutAt: Date.now()
+                });
+                
+                // Show timeout screen
+                this.showTimeoutScreen(reason);
+            }
+
+            showTimeoutScreen(reason) {
+                // Hide all other areas
+                this.productSelectionArea.classList.add('hidden');
+                this.paymentArea.classList.add('hidden');
+                this.completeArea.classList.add('hidden');
+                
+                // Show timeout area
+                this.timeoutArea.classList.remove('hidden');
+                
+                // Update timeout message
+                this.timeoutMessage.textContent = `
+                    ${reason}
+                    الرجاء إعادة العملية من البداية عن طريق مسح رمز QR مرة أخرى.
+                `;
+            }
+
+            async restartAfterTimeout() {
+                // Reset everything
+                this.selectedProduct = null;
+                this.selectedAmount = null;
+                this.timeoutReason = '';
+                
+                // Hide timeout area
+                this.timeoutArea.classList.add('hidden');
+                
+                // Show product selection with timer
+                this.productSelectionArea.classList.remove('hidden');
+                this.startProductSelectionTimer(120);
+                
+                // Clear all selections
+                document.querySelectorAll('.product-card').forEach(card => {
+                    card.classList.remove('selected');
+                });
+                
+                // Reset machine state
+                await this.updateMachineState('IDLE', {
+                    restartedAfterTimeout: true,
+                    restartedAt: Date.now()
+                });
+            }
+
             async selectProduct(product, cardElement) {
+                // Clear product selection timer
+                this.clearAllTimers();
+                
                 this.selectedProduct = product;
 
                 document.querySelectorAll('.product-card').forEach(card => {
@@ -599,22 +809,26 @@
                 this.productSelectionArea.classList.add('hidden');
                 this.paymentArea.classList.remove('hidden');
                 this.completeArea.classList.add('hidden');
+                this.timeoutArea.classList.add('hidden');
 
                 document.getElementById('selectedProductInfo').innerHTML = `
-      <div class="info-row">
-        <span class="info-label">المنتج:</span>
-        <span class="info-value">${this.selectedProduct.icon} ${this.selectedProduct.name}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">السعر:</span>
-        <span class="info-value">${this.selectedProduct.price.toFixed(2)} ₪</span>
-      </div>
-    `;
+                    <div class="info-row">
+                        <span class="info-label">المنتج:</span>
+                        <span class="info-value">${this.selectedProduct.icon} ${this.selectedProduct.name}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">السعر:</span>
+                        <span class="info-value">${this.selectedProduct.price.toFixed(2)} ₪</span>
+                    </div>
+                `;
 
                 this.loadPaymentOptions();
                 this.customPaymentInput.value = '';
                 this.selectedAmount = null;
                 this.statusMessage.innerHTML = '';
+                
+                // Start payment timer (1 minute)
+                this.startPaymentTimer(60);
             }
 
             loadPaymentOptions() {
@@ -656,6 +870,9 @@
                 this.confirmPaymentBtn.innerHTML = '⏳ جاري المعالجة... <span class="loading"></span>';
 
                 const change = amountPaid - this.selectedProduct.price;
+
+                // Clear payment timer
+                this.clearAllTimers();
 
                 await this.updateMachineState('WAITING_PAYMENT', {
                     amountPaid: amountPaid,
@@ -703,35 +920,44 @@
             showCompleteArea(amountPaid, change) {
                 this.paymentArea.classList.add('hidden');
                 this.completeArea.classList.remove('hidden');
+                this.timeoutArea.classList.add('hidden');
 
                 document.getElementById('completeInfo').innerHTML = `
-      <div class="info-row">
-        <span class="info-label">المنتج:</span>
-        <span class="info-value">${this.selectedProduct.icon} ${this.selectedProduct.name}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">السعر:</span>
-        <span class="info-value">${this.selectedProduct.price.toFixed(2)} ₪</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">المدفوع:</span>
-        <span class="info-value" style="color: #22c55e;">${amountPaid.toFixed(2)} ₪</span>
-      </div>
-      ${change > 0 ? `
-      <div class="info-row">
-        <span class="info-label">الباقي:</span>
-        <span class="info-value" style="color: #fbbf24;">${change.toFixed(2)} ₪</span>
-      </div>
-      ` : ''}
-    `;
+                    <div class="info-row">
+                        <span class="info-label">المنتج:</span>
+                        <span class="info-value">${this.selectedProduct.icon} ${this.selectedProduct.name}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">السعر:</span>
+                        <span class="info-value">${this.selectedProduct.price.toFixed(2)} ₪</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">المدفوع:</span>
+                        <span class="info-value" style="color: #22c55e;">${amountPaid.toFixed(2)} ₪</span>
+                    </div>
+                    ${change > 0 ? `
+                    <div class="info-row">
+                        <span class="info-label">الباقي:</span>
+                        <span class="info-value" style="color: #fbbf24;">${change.toFixed(2)} ₪</span>
+                    </div>
+                    ` : ''}
+                `;
+                
+                // Start complete timer (1 minute)
+                this.startCompleteTimer(60);
             }
 
             async cancelTransaction() {
-                await this.updateMachineState('IDLE', {});
+                this.clearAllTimers();
+                await this.updateMachineState('IDLE', {
+                    cancelledAt: Date.now(),
+                    cancelledBy: 'user'
+                });
                 this.startNewTransaction();
             }
 
             async startNewTransaction() {
+                this.clearAllTimers();
                 await this.updateMachineState('IDLE', {});
 
                 this.selectedProduct = null;
@@ -739,6 +965,7 @@
                 this.productSelectionArea.classList.remove('hidden');
                 this.paymentArea.classList.add('hidden');
                 this.completeArea.classList.add('hidden');
+                this.timeoutArea.classList.add('hidden');
 
                 this.confirmPaymentBtn.disabled = false;
                 this.confirmPaymentBtn.innerHTML = '✅ تأكيد الدفع';
@@ -746,6 +973,9 @@
                 document.querySelectorAll('.product-card').forEach(card => {
                     card.classList.remove('selected');
                 });
+                
+                // Start product selection timer
+                this.startProductSelectionTimer(120);
             }
 
             showStatus(type, message) {
@@ -794,13 +1024,19 @@
                     this.currentStateDisplay.textContent = session.state;
 
                     console.log('[MOBILE] Machine state:', session.state);
+                    
+                    // Check for timeout from machine side
+                    if (session.state === 'IDLE' && session.timeoutReason) {
+                        // Machine has timed out, show timeout screen
+                        this.handleTimeout(session.timeoutReason);
+                    }
                 });
             }
         }
 
         window.addEventListener('load', () => {
             new MobilePaymentApp();
-            console.log('[MOBILE] Mobile Payment App Initialized');
+            console.log('[MOBILE] Mobile Payment App Initialized with Timeout Handling');
         });
     </script>
     <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'9a970bbe57905daa',t:'MTc2NDk3NDQzMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
