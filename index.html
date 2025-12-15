@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Vending Machine - State Machine Implementation</title>
+    <title>Advanced Vending Machine - State Pattern Implementation</title>
     <!-- QR Code Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- Firebase SDK -->
@@ -34,6 +34,7 @@
         window.firebaseInitialized = true;
     </script>
     <style>
+        /* نفس الـ CSS السابق - محفوظ */
         body {
             box-sizing: border-box;
             margin: 0;
@@ -491,11 +492,6 @@
             transform: scaleX(-1);
         }
 
-        .state-node[data-state="RESET"] {
-            grid-column: 1;
-            grid-row: 2;
-        }
-
         @media (max-width: 768px) {
             .machine-screen {
                 width: 95%;
@@ -525,14 +521,6 @@
             }
         }
     </style>
-    <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
-    <style>
-        @view-transition {
-            navigation: auto;
-        }
-    </style>
-    <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
-    <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
 </head>
 
 <body>
@@ -541,304 +529,260 @@
             <h1 class="machine-title">🤖 VENDING MACHINE</h1>
         </header>
         <main class="display-area" id="displayArea">
-            <div class="qr-display">
-                <div class="qr-code-container">
-                    <div id="qrcode"></div>
-                </div>
-                <div class="qr-instruction">
-                    📱 امسح الكود بهاتفك للبدء
-                </div>
-                <div class="qr-subtext">
-                    Scan QR code to start payment
-                </div>
-            </div>
+            <!-- سيتم ملؤه ديناميكياً -->
         </main>
         <div class="state-diagram-container">
-            <div class="diagram-title">
-                📊 State Machine Diagram
-            </div>
+            <div class="diagram-title">📊 State Machine Diagram</div>
             <div class="state-flow" id="stateFlow">
                 <div class="state-node" data-state="IDLE">
-                    <div class="state-node-name">
-                        🔵 IDLE
-                    </div>
-                    <div class="state-node-desc">
-                        جاهز للاستخدام
-                    </div>
+                    <div class="state-node-name">🔵 IDLE</div>
+                    <div class="state-node-desc">جاهز للاستخدام</div>
                 </div>
-                <div class="state-arrow">
-                    ⬅️
-                </div>
+                <div class="state-arrow">⬅️</div>
                 <div class="state-node" data-state="PRODUCT_SELECTED">
-                    <div class="state-node-name">
-                        🛒 PRODUCT SELECTED
-                    </div>
-                    <div class="state-node-desc">
-                        تم اختيار المنتج
-                    </div>
+                    <div class="state-node-name">🛒 PRODUCT SELECTED</div>
+                    <div class="state-node-desc">تم اختيار المنتج</div>
                 </div>
-                <div class="state-arrow">
-                    ⬅️
-                </div>
+                <div class="state-arrow">⬅️</div>
                 <div class="state-node" data-state="WAITING_PAYMENT">
-                    <div class="state-node-name">
-                        ⏳ WAITING PAYMENT
-                    </div>
-                    <div class="state-node-desc">
-                        انتظار الدفع
-                    </div>
+                    <div class="state-node-name">⏳ WAITING PAYMENT</div>
+                    <div class="state-node-desc">انتظار الدفع</div>
                 </div>
-                <div class="state-arrow">
-                    ⬅️
-                </div>
+                <div class="state-arrow">⬅️</div>
                 <div class="state-node" data-state="PAYMENT_CONFIRMED">
-                    <div class="state-node-name">
-                        ✅ PAYMENT CONFIRMED
-                    </div>
-                    <div class="state-node-desc">
-                        تم تأكيد الدفع
-                    </div>
+                    <div class="state-node-name">✅ PAYMENT CONFIRMED</div>
+                    <div class="state-node-desc">تم تأكيد الدفع</div>
                 </div>
-                <div class="state-arrow">
-                    ⬇️
-                </div>
+                <div class="state-arrow">⬇️</div>
                 <div class="state-node" data-state="DISPENSING">
-                    <div class="state-node-name">
-                        ⚙️ DISPENSING
-                    </div>
-                    <div class="state-node-desc">
-                        جاري الصرف
-                    </div>
+                    <div class="state-node-name">⚙️ DISPENSING</div>
+                    <div class="state-node-desc">جاري الصرف</div>
                 </div>
-                <div class="state-arrow">
-                    ➡️
-                </div>
+                <div class="state-arrow">➡️</div>
                 <div class="state-node" data-state="RETURNING_CHANGE">
-                    <div class="state-node-name">
-                        💰 RETURNING CHANGE
-                    </div>
-                    <div class="state-node-desc">
-                        إرجاع الباقي
-                    </div>
+                    <div class="state-node-name">💰 RETURNING CHANGE</div>
+                    <div class="state-node-desc">إرجاع الباقي</div>
                 </div>
-                <div class="state-arrow">
-                    ➡️
-                </div>
+                <div class="state-arrow">➡️</div>
                 <div class="state-node" data-state="COMPLETE">
-                    <div class="state-node-name">
-                        ✅ COMPLETE
-                    </div>
-                    <div class="state-node-desc">
-                        اكتملت العملية
-                    </div>
-                </div>
-                <div class="state-arrow">
-                    ➡️
-                </div>
-                <div class="state-node" data-state="RESET">
-                    <div class="state-node-name">
-                        🔄 RESET
-                    </div>
-                    <div class="state-node-desc">
-                        العودة للبداية
-                    </div>
+                    <div class="state-node-name">✅ COMPLETE</div>
+                    <div class="state-node-desc">اكتملت العملية</div>
                 </div>
             </div>
         </div>
     </div>
+
     <script>
         // ============================================================================
-        // VENDING MACHINE - DISPLAY ONLY (Listens to Firebase) WITH TIMERS
+        // VENDING MACHINE - STATE PATTERN IMPLEMENTATION (THEORY OF COMPUTATION)
         // ============================================================================
 
         const MACHINE_ID = 'VM-001';
 
-        class VendingMachineDisplay {
+        /**
+         * ============================================
+         * EVENT BUS (Event-Driven Architecture)
+         * ============================================
+         * Implements Observer Pattern for decoupled communication
+         */
+        class EventBus {
             constructor() {
-                this.displayArea = document.getElementById('displayArea');
-                this.currentState = 'IDLE';
-                this.sessionData = {};
-                
-                // مؤقتات
-                this.timers = {
-                    idleTimer: null,
-                    selectionTimer: null,
-                    paymentTimer: null,
-                    completeTimer: null
-                };
-                
-                this.waitForFirebase();
+                this.listeners = new Map();
             }
 
-            waitForFirebase() {
-                if (window.firebaseInitialized && window.firebaseDB) {
-                    console.log('[MACHINE] Firebase initialized, starting listener...');
-                    this.listenToSession();
-                    this.generateQRCode();
-                } else {
-                    setTimeout(() => this.waitForFirebase(), 100);
+            subscribe(eventType, callback) {
+                if (!this.listeners.has(eventType)) {
+                    this.listeners.set(eventType, []);
+                }
+                this.listeners.get(eventType).push(callback);
+                console.log(`[EVENT] Subscribed to: ${eventType}`);
+            }
+
+            unsubscribe(eventType, callback) {
+                if (this.listeners.has(eventType)) {
+                    const callbacks = this.listeners.get(eventType);
+                    const index = callbacks.indexOf(callback);
+                    if (index > -1) {
+                        callbacks.splice(index, 1);
+                    }
                 }
             }
 
-            listenToSession() {
-                const sessionRef = window.firebaseRef(window.firebaseDB, `machines/${MACHINE_ID}/session`);
+            publish(eventType, data) {
+                console.log(`[EVENT] Published: ${eventType}`, data);
+                if (this.listeners.has(eventType)) {
+                    this.listeners.get(eventType).forEach(callback => {
+                        try {
+                            callback(data);
+                        } catch (error) {
+                            console.error(`[EVENT] Error in listener for ${eventType}:`, error);
+                        }
+                    });
+                }
+            }
+        }
 
-                window.firebaseOnValue(sessionRef, (snapshot) => {
-                    const session = snapshot.val();
-
-                    if (!session) {
-                        this.showIdleScreen();
-                        return;
-                    }
-
-                    console.log('[MACHINE] Session updated:', session);
-
-                    this.sessionData = session;
-                    this.currentState = session.state || 'IDLE';
-
-                    this.updateDisplay();
-                    this.updateStateDiagram(this.currentState);
-                });
+        /**
+         * ============================================
+         * STATE ABSTRACT CLASS (State Design Pattern)
+         * ============================================
+         * Base class for all concrete state implementations
+         */
+        class VendingMachineState {
+            constructor(context) {
+                this.context = context;
+                this.name = this.constructor.name;
             }
 
-            updateDisplay() {
-                switch (this.currentState) {
-                    case 'IDLE':
-                        this.showIdleScreen();
-                        break;
+            // Template methods
+            onEnter() {
+                console.log(`[STATE] Entered: ${this.name}`);
+            }
+
+            onExit() {
+                console.log(`[STATE] Exited: ${this.name}`);
+            }
+
+            handleEvent(event) {
+                console.log(`[STATE] ${this.name} handling event: ${event.type}`);
+            }
+
+            getDisplayHTML() {
+                return `<div>Default State Display</div>`;
+            }
+
+            getTimerDuration() {
+                return 0; // Default no timer
+            }
+
+            startTimer() {
+                // Override in subclasses
+            }
+
+            cleanup() {
+                // Cleanup resources
+            }
+        }
+
+        /**
+         * ============================================
+         * CONCRETE STATE CLASSES (State Design Pattern)
+         * ============================================
+         * Each state has its own class with specific behavior
+         */
+
+        class IdleState extends VendingMachineState {
+            onEnter() {
+                super.onEnter();
+                this.generateQRCode();
+                this.startTimer(120); // 2 minutes
+            }
+
+            handleEvent(event) {
+                super.handleEvent(event);
+                switch (event.type) {
                     case 'PRODUCT_SELECTED':
-                        this.showProductSelected();
+                        this.context.transitionTo(new ProductSelectedState(this.context, event.data));
                         break;
-                    case 'WAITING_PAYMENT':
-                        this.showWaitingPayment();
-                        break;
-                    case 'PAYMENT_CONFIRMED':
-                        this.showPaymentConfirmed();
-                        break;
-                    case 'DISPENSING':
-                        this.showDispensing();
-                        break;
-                    case 'RETURNING_CHANGE':
-                        this.showReturningChange();
-                        break;
-                    case 'COMPLETE':
-                        this.showComplete();
+                    case 'TIMEOUT':
+                        console.log('[IDLE] Timeout occurred, staying in IDLE');
                         break;
                 }
             }
 
-            // مؤقت 2 دقيقة للعودة إلى IDLE إذا لم يتم المسح
-            startIdleTimer(seconds = 120) {
-                this.clearAllTimers();
-                
-                let timeLeft = seconds;
-                
-                this.timers.idleTimer = setInterval(() => {
-                    if (timeLeft <= 0) {
-                        clearInterval(this.timers.idleTimer);
-                        if (this.currentState === 'IDLE') {
-                            // يبقى في IDLE (لا تغيير)
-                            console.log('[TIMER] العودة إلى IDLE بعد انتهاء الوقت');
-                        }
-                    }
-                    timeLeft--;
-                }, 1000);
-            }
-
-            // مؤقت 1 دقيقة للدفع في حالة PRODUCT_SELECTED
-            startSelectionTimer(seconds = 60) {
-                this.clearAllTimers();
-                
-                let timeLeft = seconds;
-                
-                this.timers.selectionTimer = setInterval(() => {
-                    if (timeLeft <= 0) {
-                        clearInterval(this.timers.selectionTimer);
-                        if (this.currentState === 'PRODUCT_SELECTED') {
-                            this.resetToIdle('انتهى وقت اختيار المنتج');
-                        }
-                    }
-                    timeLeft--;
-                }, 1000);
-            }
-
-            // مؤقت 1 دقيقة للدفع في حالة WAITING_PAYMENT
-            startPaymentTimer(seconds = 60) {
-                this.clearAllTimers();
-                
-                let timeLeft = seconds;
-                
-                this.timers.paymentTimer = setInterval(() => {
-                    if (timeLeft <= 0) {
-                        clearInterval(this.timers.paymentTimer);
-                        if (this.currentState === 'WAITING_PAYMENT') {
-                            this.resetToIdle('انتهى وقت الدفع');
-                        }
-                    }
-                    timeLeft--;
-                }, 1000);
-            }
-
-            // مؤقت 1 دقيقة للعودة إلى IDLE بعد COMPLETE
-            startCompleteTimer(seconds = 60) {
-                this.clearAllTimers();
-                
-                let timeLeft = seconds;
-                
-                this.timers.completeTimer = setInterval(() => {
-                    if (timeLeft <= 0) {
-                        clearInterval(this.timers.completeTimer);
-                        if (this.currentState === 'COMPLETE') {
-                            this.resetToIdle('العودة التلقائية بعد اكتمال العملية');
-                        }
-                    }
-                    timeLeft--;
-                }, 1000);
-            }
-
-            clearAllTimers() {
-                Object.values(this.timers).forEach(timer => {
-                    if (timer) clearInterval(timer);
-                });
-            }
-
-            resetToIdle(reason = '') {
-                console.log(`[MACHINE] إعادة التعيين إلى IDLE: ${reason}`);
-                
-                const sessionRef = window.firebaseRef(window.firebaseDB, `machines/${MACHINE_ID}/session`);
-                window.firebaseSet(sessionRef, {
-                    state: 'IDLE',
-                    timestamp: Date.now(),
-                    resetReason: reason
-                });
-            }
-
-            showIdleScreen() {
-                this.displayArea.innerHTML = `
+            getDisplayHTML() {
+                return `
                     <div class="qr-display">
                         <div class="qr-code-container">
                             <div id="qrcode"></div>
                         </div>
                         <div class="qr-instruction">📱 امسح الكود بهاتفك للبدء</div>
                         <div class="qr-subtext">Scan QR code to start payment</div>
-                    </div>
+                       
                 `;
-                
-                setTimeout(() => this.generateQRCode(), 100);
-                this.startIdleTimer(120);
             }
 
-            showProductSelected() {
-                this.displayArea.innerHTML = `
+            generateQRCode() {
+                setTimeout(() => {
+                    const qrcodeContainer = document.getElementById('qrcode');
+                    if (!qrcodeContainer) return;
+
+                    qrcodeContainer.innerHTML = '';
+                    const mobileAppUrl = `https://ayah-saleem.github.io/mobile-payment/mobile.html?machine=${MACHINE_ID}`;
+
+                    if (typeof QRCode !== 'undefined') {
+                        new QRCode(qrcodeContainer, {
+                            text: mobileAppUrl,
+                            width: 170,
+                            height: 170,
+                            colorDark: "#000000",
+                            colorLight: "#ffffff",
+                            correctLevel: QRCode.CorrectLevel.H
+                        });
+                    }
+                }, 100);
+            }
+
+            startTimer(seconds) {
+                this.clearTimer();
+                this.timer = setTimeout(() => {
+                    this.context.eventBus.publish('TIMEOUT', {
+                        state: 'IDLE',
+                        reason: 'انتهى وقت الانتظار'
+                    });
+                }, seconds * 1000);
+            }
+
+            clearTimer() {
+                if (this.timer) {
+                    clearTimeout(this.timer);
+                    this.timer = null;
+                }
+            }
+
+            onExit() {
+                super.onExit();
+                this.clearTimer();
+            }
+        }
+
+        class ProductSelectedState extends VendingMachineState {
+            constructor(context, productData) {
+                super(context);
+                this.productData = productData;
+            }
+
+            onEnter() {
+                super.onEnter();
+                this.startTimer(60); // 1 minute
+            }
+
+            handleEvent(event) {
+                super.handleEvent(event);
+                switch (event.type) {
+                    case 'PAYMENT_STARTED':
+                        this.context.transitionTo(new WaitingPaymentState(this.context, this.productData));
+                        break;
+                    case 'CANCEL':
+                        this.context.transitionTo(new IdleState(this.context));
+                        break;
+                    case 'TIMEOUT':
+                        this.context.transitionTo(new IdleState(this.context));
+                        break;
+                }
+            }
+
+            getDisplayHTML() {
+                return `
                     <div class="qr-display">
                         <div class="order-details">
                             <div class="order-item">
                                 <span class="order-label">المنتج:</span>
-                                <span class="order-value">${this.sessionData.productIcon || ''} ${this.sessionData.productName || ''}</span>
+                                <span class="order-value">${this.productData.icon || ''} ${this.productData.name || ''}</span>
                             </div>
                             <div class="order-item">
                                 <span class="order-label">السعر:</span>
-                                <span class="order-value">${(this.sessionData.productPrice || 0).toFixed(2)} ₪</span>
+                                <span class="order-value">${(this.productData.price || 0).toFixed(2)} ₪</span>
                             </div>
                             <div class="order-item">
                                 <span class="order-label">⏰ الوقت للدفع:</span>
@@ -851,25 +795,75 @@
                         </div>
                     </div>
                 `;
-                
-                this.startSelectionTimer(60);
             }
 
-            showWaitingPayment() {
-                this.displayArea.innerHTML = `
+            startTimer(seconds) {
+                this.clearTimer();
+                this.timer = setTimeout(() => {
+                    this.context.eventBus.publish('TIMEOUT', {
+                        state: 'PRODUCT_SELECTED',
+                        reason: 'انتهى وقت اختيار المنتج'
+                    });
+                }, seconds * 1000);
+            }
+
+            clearTimer() {
+                if (this.timer) {
+                    clearTimeout(this.timer);
+                    this.timer = null;
+                }
+            }
+
+            onExit() {
+                super.onExit();
+                this.clearTimer();
+            }
+        }
+
+        class WaitingPaymentState extends VendingMachineState {
+            constructor(context, productData) {
+                super(context);
+                this.productData = productData;
+            }
+
+            onEnter() {
+                super.onEnter();
+                this.startTimer(60); // 1 minute
+            }
+
+            handleEvent(event) {
+                super.handleEvent(event);
+                switch (event.type) {
+                    case 'PAYMENT_CONFIRMED':
+                        this.context.transitionTo(new PaymentConfirmedState(this.context, {
+                            ...this.productData,
+                            payment: event.data
+                        }));
+                        break;
+                    case 'CANCEL':
+                        this.context.transitionTo(new IdleState(this.context));
+                        break;
+                    case 'TIMEOUT':
+                        this.context.transitionTo(new IdleState(this.context));
+                        break;
+                }
+            }
+
+            getDisplayHTML() {
+                return `
                     <div class="qr-display">
                         <div class="order-details">
                             <div class="order-item">
                                 <span class="order-label">المنتج:</span>
-                                <span class="order-value">${this.sessionData.productIcon || ''} ${this.sessionData.productName || ''}</span>
+                                <span class="order-value">${this.productData.icon || ''} ${this.productData.name || ''}</span>
                             </div>
                             <div class="order-item">
                                 <span class="order-label">السعر:</span>
-                                <span class="order-value">${(this.sessionData.productPrice || 0).toFixed(2)} ₪</span>
+                                <span class="order-value">${(this.productData.price || 0).toFixed(2)} ₪</span>
                             </div>
                             <div class="order-item">
                                 <span class="order-label">المطلوب:</span>
-                                <span class="order-value" style="color: #fbbf24;">${(this.sessionData.productPrice || 0).toFixed(2)} ₪</span>
+                                <span class="order-value" style="color: #fbbf24;">${(this.productData.price || 0).toFixed(2)} ₪</span>
                             </div>
                         </div>
                         <div class="timer-info">
@@ -878,46 +872,104 @@
                         </div>
                     </div>
                 `;
-                
-                this.startPaymentTimer(60);
             }
 
-            showPaymentConfirmed() {
-                this.displayArea.innerHTML = `
+            startTimer(seconds) {
+                this.clearTimer();
+                this.timer = setTimeout(() => {
+                    this.context.eventBus.publish('TIMEOUT', {
+                        state: 'WAITING_PAYMENT',
+                        reason: 'انتهى وقت الدفع'
+                    });
+                }, seconds * 1000);
+            }
+
+            clearTimer() {
+                if (this.timer) {
+                    clearTimeout(this.timer);
+                    this.timer = null;
+                }
+            }
+
+            onExit() {
+                super.onExit();
+                this.clearTimer();
+            }
+        }
+
+        class PaymentConfirmedState extends VendingMachineState {
+            constructor(context, transactionData) {
+                super(context);
+                this.transactionData = transactionData;
+            }
+
+            onEnter() {
+                super.onEnter();
+                // Auto transition to dispensing after 2 seconds
+                setTimeout(() => {
+                    this.context.transitionTo(new DispensingState(this.context, this.transactionData));
+                }, 2000);
+            }
+
+            getDisplayHTML() {
+                return `
                     <div class="qr-display">
                         <div class="order-details">
                             <div class="order-item">
                                 <span class="order-label">المنتج:</span>
-                                <span class="order-value">${this.sessionData.productIcon || ''} ${this.sessionData.productName || ''}</span>
+                                <span class="order-value">${this.transactionData.icon || ''} ${this.transactionData.name || ''}</span>
                             </div>
                             <div class="order-item">
                                 <span class="order-label">السعر:</span>
-                                <span class="order-value">${(this.sessionData.productPrice || 0).toFixed(2)} ₪</span>
+                                <span class="order-value">${(this.transactionData.price || 0).toFixed(2)} ₪</span>
                             </div>
                             <div class="order-item">
                                 <span class="order-label">المدفوع:</span>
-                                <span class="order-value" style="color: #22c55e;">${(this.sessionData.amountPaid || 0).toFixed(2)} ₪</span>
+                                <span class="order-value" style="color: #22c55e;">${(this.transactionData.payment?.amountPaid || 0).toFixed(2)} ₪</span>
+                            </div>
+                            <div class="order-item">
+                                <span class="order-label">الحالة:</span>
+                                <span class="order-value">✅ تم تأكيد الدفع</span>
                             </div>
                         </div>
                     </div>
                 `;
             }
+        }
 
-            showDispensing() {
-                this.displayArea.innerHTML = `
+        class DispensingState extends VendingMachineState {
+            constructor(context, transactionData) {
+                super(context);
+                this.transactionData = transactionData;
+            }
+
+            onEnter() {
+                super.onEnter();
+                // Auto transition to returning change or complete after 3 seconds
+                setTimeout(() => {
+                    if (this.transactionData.payment?.change > 0) {
+                        this.context.transitionTo(new ReturningChangeState(this.context, this.transactionData));
+                    } else {
+                        this.context.transitionTo(new CompleteState(this.context, this.transactionData));
+                    }
+                }, 3000);
+            }
+
+            getDisplayHTML() {
+                return `
                     <div class="qr-display">
                         <div class="order-details">
                             <div class="order-item">
                                 <span class="order-label">المنتج:</span>
-                                <span class="order-value">${this.sessionData.productIcon || ''} ${this.sessionData.productName || ''}</span>
+                                <span class="order-value">${this.transactionData.icon || ''} ${this.transactionData.name || ''}</span>
                             </div>
                             <div class="order-item">
                                 <span class="order-label">السعر:</span>
-                                <span class="order-value">${(this.sessionData.productPrice || 0).toFixed(2)} ₪</span>
+                                <span class="order-value">${(this.transactionData.price || 0).toFixed(2)} ₪</span>
                             </div>
                             <div class="order-item">
                                 <span class="order-label">المدفوع:</span>
-                                <span class="order-value" style="color: #22c55e;">${(this.sessionData.amountPaid || 0).toFixed(2)} ₪</span>
+                                <span class="order-value" style="color: #22c55e;">${(this.transactionData.payment?.amountPaid || 0).toFixed(2)} ₪</span>
                             </div>
                             <div class="order-item">
                                 <span class="order-label">⏰ الحالة:</span>
@@ -927,26 +979,41 @@
                     </div>
                 `;
             }
+        }
 
-            showReturningChange() {
-                this.displayArea.innerHTML = `
+        class ReturningChangeState extends VendingMachineState {
+            constructor(context, transactionData) {
+                super(context);
+                this.transactionData = transactionData;
+            }
+
+            onEnter() {
+                super.onEnter();
+                // Auto transition to complete after 2 seconds
+                setTimeout(() => {
+                    this.context.transitionTo(new CompleteState(this.context, this.transactionData));
+                }, 2000);
+            }
+
+            getDisplayHTML() {
+                return `
                     <div class="qr-display">
                         <div class="order-details">
                             <div class="order-item">
                                 <span class="order-label">المنتج:</span>
-                                <span class="order-value">${this.sessionData.productIcon || ''} ${this.sessionData.productName || ''}</span>
+                                <span class="order-value">${this.transactionData.icon || ''} ${this.transactionData.name || ''}</span>
                             </div>
                             <div class="order-item">
                                 <span class="order-label">السعر:</span>
-                                <span class="order-value">${(this.sessionData.productPrice || 0).toFixed(2)} ₪</span>
+                                <span class="order-value">${(this.transactionData.price || 0).toFixed(2)} ₪</span>
                             </div>
                             <div class="order-item">
                                 <span class="order-label">المدفوع:</span>
-                                <span class="order-value" style="color: #22c55e;">${(this.sessionData.amountPaid || 0).toFixed(2)} ₪</span>
+                                <span class="order-value" style="color: #22c55e;">${(this.transactionData.payment?.amountPaid || 0).toFixed(2)} ₪</span>
                             </div>
                             <div class="order-item">
                                 <span class="order-label">الباقي:</span>
-                                <span class="order-value" style="color: #fbbf24;">${(this.sessionData.change || 0).toFixed(2)} ₪</span>
+                                <span class="order-value" style="color: #fbbf24;">${(this.transactionData.payment?.change || 0).toFixed(2)} ₪</span>
                             </div>
                             <div class="order-item">
                                 <span class="order-label">⏰ الحالة:</span>
@@ -956,27 +1023,52 @@
                     </div>
                 `;
             }
+        }
 
-            showComplete() {
-                this.displayArea.innerHTML = `
+        class CompleteState extends VendingMachineState {
+            constructor(context, transactionData) {
+                super(context);
+                this.transactionData = transactionData;
+            }
+
+            onEnter() {
+                super.onEnter();
+                this.startTimer(60); // 1 minute
+            }
+
+            handleEvent(event) {
+                super.handleEvent(event);
+                switch (event.type) {
+                    case 'RESET':
+                        this.context.transitionTo(new IdleState(this.context));
+                        break;
+                    case 'TIMEOUT':
+                        this.context.transitionTo(new IdleState(this.context));
+                        break;
+                }
+            }
+
+            getDisplayHTML() {
+                const change = this.transactionData.payment?.change || 0;
+                return `
                     <div class="qr-display">
                         <div class="order-details">
                             <div class="order-item">
                                 <span class="order-label">المنتج:</span>
-                                <span class="order-value">${this.sessionData.productIcon || ''} ${this.sessionData.productName || ''}</span>
+                                <span class="order-value">${this.transactionData.icon || ''} ${this.transactionData.name || ''}</span>
                             </div>
                             <div class="order-item">
                                 <span class="order-label">السعر:</span>
-                                <span class="order-value">${(this.sessionData.productPrice || 0).toFixed(2)} ₪</span>
+                                <span class="order-value">${(this.transactionData.price || 0).toFixed(2)} ₪</span>
                             </div>
                             <div class="order-item">
                                 <span class="order-label">المدفوع:</span>
-                                <span class="order-value" style="color: #22c55e;">${(this.sessionData.amountPaid || 0).toFixed(2)} ₪</span>
+                                <span class="order-value" style="color: #22c55e;">${(this.transactionData.payment?.amountPaid || 0).toFixed(2)} ₪</span>
                             </div>
-                            ${(this.sessionData.change || 0) > 0 ? `
+                            ${change > 0 ? `
                             <div class="order-item">
                                 <span class="order-label">الباقي:</span>
-                                <span class="order-value" style="color: #fbbf24;">${(this.sessionData.change || 0).toFixed(2)} ₪</span>
+                                <span class="order-value" style="color: #fbbf24;">${change.toFixed(2)} ₪</span>
                             </div>
                             ` : ''}
                         </div>
@@ -989,33 +1081,234 @@
                         </div>
                     </div>
                 `;
-                this.startCompleteTimer(60);
             }
 
-            generateQRCode() {
-                const qrcodeContainer = document.getElementById('qrcode');
-                if (!qrcodeContainer) return;
-
-                qrcodeContainer.innerHTML = '';
-
-                const mobileAppUrl = `https://ayah-saleem.github.io/mobile-payment/mobile.html?machine=${MACHINE_ID}`;
-
-                if (typeof QRCode !== 'undefined') {
-                    new QRCode(qrcodeContainer, {
-                        text: mobileAppUrl,
-                        width: 170,
-                        height: 170,
-                        colorDark: "#000000",
-                        colorLight: "#ffffff",
-                        correctLevel: QRCode.CorrectLevel.H
+            startTimer(seconds) {
+                this.clearTimer();
+                this.timer = setTimeout(() => {
+                    this.context.eventBus.publish('TIMEOUT', {
+                        state: 'COMPLETE',
+                        reason: 'انتهى وقت الاستلام'
                     });
+                }, seconds * 1000);
+            }
+
+            clearTimer() {
+                if (this.timer) {
+                    clearTimeout(this.timer);
+                    this.timer = null;
                 }
             }
 
-            updateStateDiagram(currentState) {
+            onExit() {
+                super.onExit();
+                this.clearTimer();
+            }
+        }
+
+        /**
+         * ============================================
+         * VENDING MACHINE MODEL (Model-View Separation)
+         * ============================================
+         * Pure business logic, no UI concerns
+         */
+        class VendingMachineModel {
+            constructor() {
+                this.eventBus = new EventBus();
+                this.currentState = new IdleState(this);
+                this.currentState.onEnter();
+
+                // Initialize Firebase listener
+                this.waitForFirebase();
+
+                // Listen to internal events
+                this.setupEventListeners();
+            }
+
+            transitionTo(newState) {
+                console.log(`[MODEL] Transitioning from ${this.currentState.name} to ${newState.name}`);
+
+                // Exit current state
+                this.currentState.onExit();
+                this.currentState.cleanup();
+
+                // Update state
+                this.currentState = newState;
+
+                // Enter new state
+                this.currentState.onEnter();
+
+                // Update Firebase
+                this.updateFirebaseState();
+
+                // Notify View
+                this.eventBus.publish('STATE_CHANGED', {
+                    state: this.currentState,
+                    stateName: this.currentState.name
+                });
+            }
+
+            handleEvent(event) {
+                this.currentState.handleEvent(event);
+            }
+
+            waitForFirebase() {
+                if (window.firebaseInitialized && window.firebaseDB) {
+                    console.log('[MODEL] Firebase initialized');
+                    this.setupFirebaseListener();
+                } else {
+                    setTimeout(() => this.waitForFirebase(), 100);
+                }
+            }
+
+            setupFirebaseListener() {
+                const sessionRef = window.firebaseRef(window.firebaseDB, `machines/${MACHINE_ID}/session`);
+
+                window.firebaseOnValue(sessionRef, (snapshot) => {
+                    const session = snapshot.val();
+                    if (!session) return;
+
+                    console.log('[MODEL] Firebase update:', session.state);
+
+                    // Map Firebase state to internal events
+                    switch (session.state) {
+                        case 'PRODUCT_SELECTED':
+                            this.eventBus.publish('PRODUCT_SELECTED', {
+                                name: session.productName,
+                                icon: session.productIcon,
+                                price: session.productPrice
+                            });
+                            break;
+                        case 'WAITING_PAYMENT':
+                            this.eventBus.publish('PAYMENT_STARTED', {
+                                amount: session.productPrice
+                            });
+                            break;
+                        case 'PAYMENT_CONFIRMED':
+                            this.eventBus.publish('PAYMENT_CONFIRMED', {
+                                amountPaid: session.amountPaid,
+                                change: session.change
+                            });
+                            break;
+                        case 'IDLE':
+                            if (session.resetReason) {
+                                this.eventBus.publish('RESET', { reason: session.resetReason });
+                            }
+                            break;
+                    }
+                });
+            }
+
+            updateFirebaseState() {
+                if (!window.firebaseDB) return;
+
+                const stateName = this.currentState.name.replace('State', '').toUpperCase();
+                const sessionRef = window.firebaseRef(window.firebaseDB, `machines/${MACHINE_ID}/session`);
+
+                let sessionData = {
+                    state: stateName,
+                    timestamp: Date.now()
+                };
+
+                // Add product data if available
+                if (this.currentState.productData || this.currentState.transactionData) {
+                    const data = this.currentState.productData || this.currentState.transactionData;
+                    sessionData.productName = data.name;
+                    sessionData.productIcon = data.icon;
+                    sessionData.productPrice = data.price;
+
+                    if (data.payment) {
+                        sessionData.amountPaid = data.payment.amountPaid;
+                        sessionData.change = data.payment.change;
+                    }
+                }
+
+                window.firebaseSet(sessionRef, sessionData);
+            }
+
+            setupEventListeners() {
+                // Internal event handlers
+                this.eventBus.subscribe('PRODUCT_SELECTED', (data) => {
+                    this.handleEvent({ type: 'PRODUCT_SELECTED', data });
+                });
+
+                this.eventBus.subscribe('PAYMENT_STARTED', (data) => {
+                    this.handleEvent({ type: 'PAYMENT_STARTED', data });
+                });
+
+                this.eventBus.subscribe('PAYMENT_CONFIRMED', (data) => {
+                    this.handleEvent({ type: 'PAYMENT_CONFIRMED', data });
+                });
+
+                this.eventBus.subscribe('CANCEL', () => {
+                    this.handleEvent({ type: 'CANCEL' });
+                });
+
+                this.eventBus.subscribe('RESET', () => {
+                    this.handleEvent({ type: 'RESET' });
+                });
+
+                this.eventBus.subscribe('TIMEOUT', (data) => {
+                    this.handleEvent({ type: 'TIMEOUT', data });
+                });
+            }
+
+            getCurrentState() {
+                return this.currentState;
+            }
+        }
+
+        /**
+         * ============================================
+         * VENDING MACHINE VIEW (Model-View Separation)
+         * ============================================
+         * Only handles UI rendering, no business logic
+         */
+        class VendingMachineView {
+            constructor(model) {
+                this.model = model;
+                this.displayArea = document.getElementById('displayArea');
+
+                // Subscribe to model changes
+                this.model.eventBus.subscribe('STATE_CHANGED', (data) => {
+                    this.render(data.state);
+                    this.updateStateDiagram(data.stateName);
+                });
+
+                // Initial render
+                this.render(this.model.getCurrentState());
+            }
+
+            render(state) {
+                if (!this.displayArea) return;
+
+                this.displayArea.innerHTML = state.getDisplayHTML();
+
+                // Special handling for QR code in Idle state
+                if (state.name === 'IdleState') {
+                    setTimeout(() => {
+                        const qrcodeContainer = document.getElementById('qrcode');
+                        if (qrcodeContainer && typeof QRCode !== 'undefined') {
+                            const mobileAppUrl = `https://ayah-saleem.github.io/mobile-payment/mobile.html?machine=${MACHINE_ID}`;
+                            qrcodeContainer.innerHTML = '';
+                            new QRCode(qrcodeContainer, {
+                                text: mobileAppUrl,
+                                width: 170,
+                                height: 170,
+                                colorDark: "#000000",
+                                colorLight: "#ffffff",
+                                correctLevel: QRCode.CorrectLevel.H
+                            });
+                        }
+                    }, 100);
+                }
+            }
+
+            updateStateDiagram(currentStateName) {
                 const allNodes = document.querySelectorAll('.state-node');
                 const allArrows = document.querySelectorAll('.state-arrow');
 
+                // Remove all active/completed classes
                 allNodes.forEach(node => {
                     node.classList.remove('active', 'completed');
                 });
@@ -1024,12 +1317,27 @@
                     arrow.classList.remove('active');
                 });
 
-                const currentNode = document.querySelector(`[data-state="${currentState}"]`);
+                // Map state class names to diagram state names
+                const stateMap = {
+                    'IdleState': 'IDLE',
+                    'ProductSelectedState': 'PRODUCT_SELECTED',
+                    'WaitingPaymentState': 'WAITING_PAYMENT',
+                    'PaymentConfirmedState': 'PAYMENT_CONFIRMED',
+                    'DispensingState': 'DISPENSING',
+                    'ReturningChangeState': 'RETURNING_CHANGE',
+                    'CompleteState': 'COMPLETE'
+                };
+
+                const diagramStateName = stateMap[currentStateName] || currentStateName;
+                const currentNode = document.querySelector(`[data-state="${diagramStateName}"]`);
+
                 if (currentNode) {
                     currentNode.classList.add('active');
 
-                    const stateOrder = ['IDLE', 'PRODUCT_SELECTED', 'WAITING_PAYMENT', 'PAYMENT_CONFIRMED', 'DISPENSING', 'RETURNING_CHANGE', 'COMPLETE', 'RESET'];
-                    const currentIndex = stateOrder.indexOf(currentState);
+                    // Mark previous states as completed
+                    const stateOrder = ['IDLE', 'PRODUCT_SELECTED', 'WAITING_PAYMENT',
+                        'PAYMENT_CONFIRMED', 'DISPENSING', 'RETURNING_CHANGE', 'COMPLETE'];
+                    const currentIndex = stateOrder.indexOf(diagramStateName);
 
                     for (let i = 0; i < currentIndex; i++) {
                         const node = document.querySelector(`[data-state="${stateOrder[i]}"]`);
@@ -1038,6 +1346,7 @@
                         }
                     }
 
+                    // Mark arrows as active
                     allArrows.forEach((arrow, index) => {
                         if (index < currentIndex) {
                             arrow.classList.add('active');
@@ -1047,12 +1356,46 @@
             }
         }
 
+        /**
+         * ============================================
+         * FINITE AUTOMATON DOCUMENTATION
+         * ============================================
+         * Formal definition as per Theory of Computation requirements
+         * 
+         * Finite Automaton M = (Q, Σ, δ, q0, F)
+         * 
+         * Q = {IdleState, ProductSelectedState, WaitingPaymentState,
+         *      PaymentConfirmedState, DispensingState, 
+         *      ReturningChangeState, CompleteState}
+         * 
+         * Σ = {PRODUCT_SELECTED, PAYMENT_STARTED, PAYMENT_CONFIRMED,
+         *      CANCEL, RESET, TIMEOUT}
+         * 
+         * δ: Transition function (implemented in handleEvent() methods)
+         * 
+         * q0 = IdleState (initial state)
+         * 
+         * F = {CompleteState} (accepting/final state)
+         * 
+         * Language L = Sequence of valid transactions:
+         * L = {PRODUCT_SELECTED → PAYMENT_STARTED → PAYMENT_CONFIRMED
+         *      → [RETURNING_CHANGE] → COMPLETE}
+         */
+
+        // Initialize the application
         window.addEventListener('load', () => {
-            new VendingMachineDisplay();
-            console.log('[MACHINE] Vending Machine Display Initialized with Timers');
+            console.log('[APP] Initializing Vending Machine with State Pattern...');
+
+            // Create Model (business logic)
+            const model = new VendingMachineModel();
+
+            // Create View (UI)
+            new VendingMachineView(model);
+
+            console.log('[APP] Vending Machine initialized successfully!');
+            console.log('[APP] State Pattern ✓ | Event-Driven Architecture ✓ | Model-View Separation ✓');
         });
     </script>
-    <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'9a97044305f05daa',t:'MTc2NDk3NDEyNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
 </body>
 
 </html>
